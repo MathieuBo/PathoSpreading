@@ -20,8 +20,7 @@ savedir = os.path.join(basedir, opdir, "processed")
 try:
     os.mkdir(savedir)
 except WindowsError as error:
-    print(
-        error)  # Prevent the algorithm to stop if the folder is already created. For Mac users need to replace by OSError.
+    print(error)  # Prevent the algorithm to stop if the folder is already created. For Mac users need to replace by OSError.
 data = pd.read_csv("Data83018\\data.csv", header=0)  # Stored as a Dataframe with header
 connectivity_ipsi = pd.read_csv("Data83018\\connectivity_ipsi.csv", index_col=0)
 connectivity_contra = pd.read_csv("Data83018\\connectivity_contra.csv", index_col=0)
@@ -91,22 +90,44 @@ for i in range(0, len(ROInames)):
 
 # Save the adjacency matrix
 os.chdir(savedir)
-try:
-    savemat("W.mat", W)
-except ValueError as error:
-    print("Careful, ", error)
+W.to_csv('W.csv')
 
 #Saving path_data, conn_names, orig_order, n_regions in a file located in the folder processed
-path_data_objects= [path_data, conn_names, orig_order, n_regions]
-path_data_pickled = open("path_data_pickled","wb")
-pickle.dump(path_data_objects,path_data_pickled)
+path_data_objects = [path_data, conn_names, orig_order, n_regions] #Will depend on whether we will import directly this whole code ==> Need to check
+path_data_pickle_out = open("path_data_pickle_out","wb")
+pickle.dump(path_data_objects, path_data_pickle_out)
 
 os.chdir(basedir)  # Sets the wd back
 
 ###########################
 ##PROCESS ROI COORDINATES##
 ###########################
-coor = pd.read_csv("Data83018\\ROIcoords.csv", index_col=0)
+coor = pd.read_csv("Data83018\\ROIcoords.csv")
+coor.rename(columns = {'Unnamed: 0':'ROI'}, inplace = True)
+idx = []
+for i in range(0, len(ROInames)):
+    for k in range(0, len(coor['ROI'])):
+        if ROInames[i] == coor['ROI'][k]:
+            idx.append(k)
+coor = coor.loc[idx,:] # From the new index created we reorganize the table by index.
 
+# Saving the reorganized coordinates
+os.chdir(savedir) #Saving in the folder processed
+coor.to_csv('coor.csv')
+os.chdir(basedir)  # Sets the wd back
 
+###############################
+### Process Snca Expression ###
+###############################
+synuclein = pd.read_csv("Data83018\\SncaExpression.csv", index_col = 0, header= None)
+synuclein_ordered = []
+for i in range(0, len(ROInames)):
+    for k in range(0, len(synuclein.index._index_data)):
+        if ROInames[i] == synuclein.index._index_data[k]:
+            synuclein_ordered.append(synuclein.index._index_data[k])
+synuclein = synuclein.loc[synuclein_ordered,:] # Reordered
 
+# Saving the reorganized Scna expression
+os.chdir(savedir) #Saving in the folder processed
+synuclein.to_csv('Scna.csv')
+os.chdir(basedir)  # Sets the wd back
