@@ -11,7 +11,7 @@ try:
     os.mkdir(opdir)
 except WindowsError as error:
     print(error) # Prevent the algorithm to stop if the folder is already created. For Mac users need to replace by OSError.
-grp = ["NTG"] # List
+grp = ["NTG"] # List   =======> NTG only here careful !!!
 params = [basedir, opdir, grp] # List of three str elements
 # In params no matlab.path='C:/Program Files/MATLAB/R2020b/bin' in the list as we will try to use something different
 
@@ -20,4 +20,5 @@ params = [basedir, opdir, grp] # List of three str elements
 ############################
 ####### Process Data #######
 ############################
+
 

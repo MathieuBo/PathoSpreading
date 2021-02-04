@@ -127,7 +127,7 @@ for i in range(0, len(ROInames)):
             synuclein_ordered.append(synuclein.index._index_data[k])
 synuclein = synuclein.loc[synuclein_ordered,:] # Reordered
 
-# Saving the reorganized Scna expression
+# Saving the reorganized Snca expression
 os.chdir(savedir) #Saving in the folder processed
-synuclein.to_csv('Scna.csv')
+synuclein.to_csv('Snca.csv')
 os.chdir(basedir)  # Sets the wd back

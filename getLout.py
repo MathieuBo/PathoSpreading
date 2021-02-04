@@ -17,7 +17,6 @@ import pickle
 from Pipeline import *
 
 # Setting the environment
-######Not necessary, need to check
 basedir = params[0]  # Extract the basedir from params
 os.chdir(basedir)  # Sets the wd
 savedir = os.path.join(basedir, opdir, "processed")
@@ -42,20 +41,49 @@ n_regions = path_data_objects[3]
 W = pd.read_csv("W.csv", index_col = 0)
 
 # Conversion to numpy
-W_numpy = W.values
-np.fill_diagonal(W_numpy, 0)
-W_numpy = W_numpy / np.max(np.real(np.linalg.eig(W_numpy)[0])) # Extracting the max eigenvalue from our matrix and scaling the whole matrix
+W = W.values
+np.fill_diagonal(W, 0)
+W = W / np.max(np.real(np.linalg.eig(W)[0])) # Extracting the max eigenvalue from our matrix and scaling the whole matrix
 
 # Computation of in- and out-degree
-out_degree = W_numpy.sum(axis=1) # To sum over rows
-in_degree = W_numpy.sum(axis=0) # To sum over columns
+out_degree = W.sum(axis=1) # To sum over rows
+in_degree = W.sum(axis=0) # To sum over columns
 
 # Creation of the Laplacian matrix
-L_out = np.diag(out_degree) - W_numpy  #DOUBLE CHECK STILL REQUIRED
+L_out = np.diag(out_degree) - W  #DOUBLE CHECK STILL REQUIRED
 
-# Saving the Laplacian matrix using pickle
-
+# Saving the Laplacian matrix
+np.savetxt('L_out.csv',L_out)
 
 ##################################
 ### Synuclein weighted matrix ####
 ##################################
+os.chdir(basedir)  # Sets the wd
+# Loading Snca and diagonalizing it
+Snca = pd.read_csv("Data83018/Snca.csv")
+Snca = Snca.values[:,0]
+Snca = np.diag(Snca)
+
+# Extraction of W and Synuclein weighted matrix
+os.chdir(savedir)
+W = pd.read_csv("W.csv", index_col = 0)
+W = W.values #Converting to numpy
+np.fill_diagonal(W, 0)
+W_snca = np.dot(Snca, W) # Synuclein weighted matrix
+W_snca = W_snca / np.max(np.real(np.linalg.eig(W_snca)[0])) #Scaling with max eigenvalue
+
+# Computation of in- and out-degree
+out_degree = W_snca.sum(axis=1)  # To sum over rows
+in_degree = W_snca.sum(axis=0)  # To sum over columns
+
+# Creation of the Synuclein Laplacian matrix
+L_out = np.diag(out_degree) - W_snca
+
+# Saving the Laplacian matrix
+np.savetxt('L_out_scna.csv',L_out)
+
+# To remove checking that W produced in python and R are the same
+# os.chdir(savedir)
+# W_sn = pd.read_csv("TESTW_snca.csv", header = None)
+# W_snR = pd.read_csv("TEST_W_R.csv", index_col = 0)
+# a = (W_snR.values == W_sn.values)
