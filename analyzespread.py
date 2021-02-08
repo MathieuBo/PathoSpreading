@@ -1,12 +1,16 @@
 """analyzespread"""
 """04/02/2021"""
-# import modules
+# Importing modules
 import os
 import pickle
 import numpy as np
+# Modules for plotting
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
 from process_pathconn import *
 from Pipeline import *
-# from fitfunctions import * to unlock when all functions will be written
+from fitfunctions import c_fit, make_Xo, predict_Lout
 
 # Setting the environment
 basedir = params[0]  # Extract the basedir from params
@@ -60,7 +64,40 @@ Grp_mean.columns = ["1 MPI","3 MPI","6 MPI"]
 L_out = np.loadtxt('L_out.csv')
 
 # Fit time scaling parameter
-c_rng = np.arange(0.01, 10, step = 0.1) # Step =0.1 for a total length of 100
+# c_rng = np.arange(0.01, 10, step = 0.1) # Step =0.1 for a total length of 100
+c_rng = np.linspace(start=0.01, stop=10, num=100)
+
 log_path = np.log10(Grp_mean)
+c_Grp = c_fit(log_path, L_out, tp,'R CPu', c_rng, ROInames) # Returns a best fit number. For the 'R Cpu' returns 1.6245
 
+#############################################################
+### Test model at observed points for group (NTG or G20)  ###
+#############################################################
+Xo = make_Xo('R CPu', ROInames) # Where we seed our pathology
+vulnerability = mask = pd.DataFrame() # To double check but mask can be removed
+Xt_Grp = [predict_Lout(L_out, Xo, c_Grp,i) for i in tp]
+p_SC = p_vuln = c_tests = pd.DataFrame()
+r_SC = pd.DataFrame(columns=["MPI","Pearson"]) # Result df to store our correlation coefficients
 
+for M in range(0,len(tp)):
+    Df = pd.DataFrame({"Path" : np.log10(Grp_mean.iloc[:,M]).values, "Xt" : np.log10(Xt_Grp[M])}, index= Grp_mean.index) # Runtime Warning
+    # exclude regions with 0 pathology at each time point for purposes of computing fit
+    Df = Df[Df["Path"] != -np.inf][Df["Xt"] != -np.inf][Df["Xt"] != np.nan] # Excluding Nan, and -Inf values for each tp
+    cor = {"MPI" : "%s" % (M), "Pearson": stats.pearsonr(Df["Path"], Df["Xt"])[0]}
+    r_SC = r_SC.append(cor, ignore_index=True) #Question, How to set index as MPI?
+    print("Month Post Injection %s"%tp[M])
+    print("Number of Regions used: ", len(Df))
+    print("Pearson correlation coefficient", r_SC['Pearson'][M])
+    # Plotting the Log(Predicted) vs Log(Path)
+    fig = plt.figure()
+    plt.scatter(Df["Xt"], Df["Path"], c="r")
+    sns.regplot(Df["Xt"], Df["Path"], data=Df, color="blue")
+    plt.xlabel("Log(Predicted)")
+    plt.ylabel("Log(Path)")
+    plt.title("Month Post Injection %s"%tp[M])
+    plt.grid(color="grey")
+    plt.show()
+    #NEED TO EXTRACT EVERY GRAPH ==> in p_SC
+    # Plotting the Vulnerability graph
+    #Same story with the vulnerability df
+    vulnerability

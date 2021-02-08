@@ -82,7 +82,7 @@ L_out = np.diag(out_degree) - W_snca
 # Saving the Laplacian matrix
 np.savetxt('L_out_scna.csv',L_out)
 
-# To remove checking that W produced in python and R are the same
+# To remove: Need to check that W produced in python and R are the same
 # os.chdir(savedir)
 # W_sn = pd.read_csv("TESTW_snca.csv", header = None)
 # W_snR = pd.read_csv("TEST_W_R.csv", index_col = 0)
