@@ -1,16 +1,12 @@
 """analyzespread"""
 """04/02/2021"""
 # Importing modules
-import os
-import pickle
-import numpy as np
 # Modules for plotting
-import matplotlib.pyplot as plt
-import seaborn as sns
 from scipy import stats
-from process_pathconn import *
+
 from Pipeline import *
 from fitfunctions import c_fit, make_Xo, predict_Lout
+from process_pathconn import *
 
 # Setting the environment
 basedir = params[0]  # Extract the basedir from params
@@ -86,10 +82,12 @@ r_SCc = pd.DataFrame(columns=["MPI", "Pearson r"])
 r_SCp = pd.DataFrame(columns=["MPI", "p_value"])  # Result df to store our correlation coefficients
 p_values_cor = list()
 
+
+g = pd.DataFrame(0, index=Grp_mean.index, columns=["MPI 1", "MPI 3", "MPI 6"]) ####
 os.chdir(os.path.join(basedir, opdir, "diffmodel"))
-for M in range(0, len(tp)):  # M iterates according to the number of timepoint
+for M in range(0, len(tp)): ########### # M iterates according to the number of timepoint
     Df = pd.DataFrame({"Path": np.log10(Grp_mean.iloc[:, M]).values, "Xt": np.log10(Xt_Grp[M])},
-                      index=Grp_mean.index)  # Runtime Warning
+                       index=Grp_mean.index)  # Runtime Warning
     # exclude regions with 0 pathology at each time point for purposes of computing fit
     Df = Df[Df["Path"] != -np.inf][Df["Xt"] != -np.inf][
         Df["Xt"] != np.nan]  # Excluding Nan, and -Inf values for each tp
@@ -101,26 +99,28 @@ for M in range(0, len(tp)):  # M iterates according to the number of timepoint
     print("Number of Regions used: ", len(Df))
     print("Pearson correlation coefficient", r_SCc['Pearson r'][M])
     # Plotting the Log(Predicted) vs Log(Path)
-    plt.scatter(Df["Xt"], Df["Path"], c="r")
-    corr_graph = sns.regplot(Df["Xt"], Df["Path"], data=Df, color="blue")
-    plt.xlabel("Log(Predicted)")
-    plt.ylabel("Log(Path)")
-    plt.title("Month Post Injection %s" % tp[M])
-    plt.grid(color="grey")
-    # plt.savefig(f'PredictVSPath_Month_{tp[M]}.png', dpi=300)
-    # plt.savefig(f'PredictVSPath_Month_{tp[M]}.eps')
+
+    #fig = plt.figure()
+    #plt.scatter(Df["Xt"], Df["Path"], c="r")
+    #sns.regplot(Df["Xt"], Df["Path"], data=Df, color="blue")
+    #plt.xlabel("Log(Predicted)")
+    #plt.ylabel("Log(Path)")
+    #plt.title("Month Post Injection %s" % tp[M])
+    #plt.grid(color="grey")
+    # fig.savefig(f'PredictVSPath_Month_{tp[M]}.png', dpi=300)
+    # fig.savefig(f'PredictVSPath_Month_{tp[M]}.eps')
     # plt.show()
 
     # Plotting the Vulnerability graph
     slope, intercept, r_value, p_value, std_err = stats.linregress(x=Df['Xt'], y=Df['Path'])
     pred_values = slope * Df['Xt'] + intercept
     Residual = Df['Path'] - pred_values
-    vulnerability["MPI %s" % tp[M]] = Residual ### TO CHECK
+    vulnerability["MPI %s" % tp[M]] = Residual
 
-    plt.figure(figsize=(20, 5), constrained_layout=True)
-    plt.bar(np.arange(len(Residual)), Residual)
-    plt.xticks(np.arange(len(Residual)), Df.index, rotation='vertical')
-    plt.xlim(xmin=-0.6, xmax=len(Residual) + 0.6)
+    #plt.figure(figsize=(20, 5), constrained_layout=True)
+    #plt.bar(np.arange(len(Residual)), Residual)
+    #plt.xticks(np.arange(len(Residual)), Df.index, rotation='vertical')
+    #plt.xlim(xmin=-0.6, xmax=len(Residual) + 0.6)
     # Saving the vulnerability graph
     # plt.savefig(f'Vulnerability_Month_{tp[M]}.png', dpi=300)
     # plt.savefig(f'Vulnerability_Month_{tp[M]}.eps')
@@ -148,6 +148,23 @@ Diff = Df_mean_Xt["Xt_MPI 1"] - Df_mean_Xt["1 MPI"]
 for t in tp:
     Df_mean_Xt["Xt_MPI %d" % t] = Df_mean_Xt["Xt_MPI %d" % t] - Diff # Normalization of the predicted values (log)
 
-vulnerability = vulnerability.dropna() #Check should the same as df.v
-
 # find regions with low average vulnerability at all time points
+vulnerability = vulnerability.dropna() #Check should the same as df.v
+low_vuln = np.where(np.abs(vulnerability).mean(axis=1) < 0.2)[0] # Returns an array containing the index of the areas of low vulnerability
+os.chdir(savedir) # Saving in ROIlevels
+# for ROI in low_vuln:
+#     fig = plt.figure()# Ask Mathieu
+#     plt.plot(tp,Df_mean_Xt.iloc[ROI,0:3], marker='o', color="r", linestyle="none")
+#     plt.plot(tp,Df_mean_Xt.iloc[ROI,3:6],  color="b")
+#     plt.legend(["Path","Predicted values"], loc="lower right")
+#     plt.xlabel("Month Post Injection")
+#     plt.ylabel("Log(Path)")
+#     plt.title("Region of Low Vulnerability: %s" % ROInames[ROI])
+#     plt.grid(color="grey")
+#     plt.show()
+#     fig.savefig(f'Low_vulnerability_region_{ROInames[ROI]}.png', dpi=300)
+#     fig.savefig(f'Low_vulnerability_region_{ROInames[ROI]}.eps')
+
+# unit test for vulnerability names matching up:
+# regions with vulnerability = 0 should also have group mean pathology = 0
+path_0= [np.where(Grp_mean.iloc[:,i] == 0) for i in range(0,len(tp))]
