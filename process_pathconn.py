@@ -2,7 +2,7 @@
 """01/02/2021"""
 # Def process_pathconn(data_name,connectivity_ipsi_name,connectivity_contra_name,ROI_coor_name, Snca_expression):
 # Scna optional, ROI_coor ==> Depends on the data from the lab
-# Debuter par la localisation des différent fichiers ?
+# Debuter par la localisation des différent fichiers ?//Condition initiale?
 #######################
 #######LOAD DATA#######
 #######################

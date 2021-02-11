@@ -1,10 +1,11 @@
 """getLout"""
 """03/02/2021"""
-# Need to clear wspace ==> one line missing
 
 #######################
 #######LOAD DATA#######
 #######################
+
+#Def getLout
 
 # Importing modules
 import os
@@ -14,12 +15,12 @@ from scipy.io import loadmat
 import pickle
 
 # Importing the Pipeline
-from Pipeline import *
+from Pipeline import *  # This will be removed after defining it as a function
 
 # Setting the environment
-basedir = params[0]  # Extract the basedir from params
-os.chdir(basedir)  # Sets the wd
-savedir = os.path.join(basedir, opdir, "processed")
+basedir = params[0]  # Extract the basedir from params # Need cuz after path_conn wd = "\\asyndiffusion3\\processed"
+os.chdir(basedir)  # Sets the wd to
+savedir = os.path.join(basedir, opdir, "processed") # opdir ="asyndiffusion3"
 try:
     os.mkdir(savedir)
 except WindowsError as error:
@@ -80,7 +81,7 @@ in_degree = W_snca.sum(axis=0)  # To sum over columns
 L_out = np.diag(out_degree) - W_snca
 
 # Saving the Laplacian matrix
-np.savetxt('L_out_scna.csv',L_out)
+np.savetxt('L_out_scna.csv',L_out) #####NEED TO CHANGE
 
 # To remove: Need to check that W produced in python and R are the same
 # os.chdir(savedir)

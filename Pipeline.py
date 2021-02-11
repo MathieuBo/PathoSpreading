@@ -5,7 +5,7 @@ import os
 
 basedir = "C:\\Users\\thoma\\Documents\\M1_Neurasmus\\NeuroBIM_M1\\Internship\\GitRepo\\PathoSpreading"
 os.chdir(basedir)  # Sets the wd
-opdir = "asyndiffusion34"
+opdir = "asyndiffusion3"
 
 try:
     os.mkdir(opdir)
