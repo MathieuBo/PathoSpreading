@@ -85,20 +85,24 @@ c_Grp = c_fit(log_path, L_out, tp, 'R CPu', c_rng,
 ### Test model at observed points for group (NTG or G20)  ###
 #############################################################
 Xo = make_Xo('R CPu', ROInames)  # Where we seed our pathology
-vulnerability = pd.DataFrame(columns=["MPI 1", "MPI 3", "MPI 6"])  # To double check but mask can be removed
+vulnerability = pd.DataFrame(0,columns=["MPI 1", "MPI 3", "MPI 6"], index=Grp_mean.index)  # To double check but mask can be removed
 Xt_Grp = [predict_Lout(L_out, Xo, c_Grp, i) for i in tp]
 p_SC = p_vuln = c_tests = pd.DataFrame()
 r_SCc = pd.DataFrame(columns=["MPI", "Pearson r"])
 r_SCp = pd.DataFrame(columns=["MPI", "p_value"])  # Result df to store our correlation coefficients
 p_values_cor = list()
 
+masks = dict()
 os.chdir(os.path.join(basedir, opdir, "diffmodel"))
 for M in range(0, len(tp)): # M iterates according to the number of timepoint
     Df = pd.DataFrame({"Path": np.log10(Grp_mean.iloc[:, M]).values, "Xt": np.log10(Xt_Grp[M])},
                        index=Grp_mean.index)  # Runtime Warning
     # exclude regions with 0 pathology at each time point for purposes of computing fit
-    Df = Df[Df["Path"] != -np.inf][Df["Xt"] != -np.inf][
-        Df["Xt"] != np.nan]  # Excluding Nan, and -Inf values for each tp
+    mask = (Df["Path"] != -np.inf) & (Df['Xt'] != -np.inf) & (Df['Xt'] != np.nan)
+    print(np.sum(mask))
+    masks["MPI %s" % tp[M]] = mask
+    Df = Df[mask]
+
     cor = {"MPI": "%s" % (M), "Pearson r": stats.pearsonr(Df["Path"], Df["Xt"])[0]}
     p_val = {"MPI": "%s" % (M), "p_value": stats.pearsonr(Df["Path"], Df["Xt"])[1]}
     r_SCc = r_SCc.append(cor, ignore_index=True)  # Question, How to set index'name as MPI?
@@ -117,7 +121,8 @@ for M in range(0, len(tp)): # M iterates according to the number of timepoint
     plt.grid(color="grey")
     fig.savefig(f'{Lap}PredictVSPath_Month_{tp[M]}.png', dpi=300)
     fig.savefig(f'{Lap}PredictVSPath_Month_{tp[M]}.eps')
-    plt.show()
+    #plt.show()
+    #The three months in the same fig + Correlation coefficient?
 
     # Plotting the Vulnerability graph
     slope, intercept, r_value, p_value, std_err = stats.linregress(x=Df['Xt'], y=Df['Path'])
@@ -133,7 +138,8 @@ for M in range(0, len(tp)): # M iterates according to the number of timepoint
     # Saving the vulnerability graph
     plt.savefig(f'{Lap}Vulnerability_Month_{tp[M]}.png', dpi=300)
     plt.savefig(f'{Lap}Vulnerability_Month_{tp[M]}.eps')
-    plt.show()
+    #plt.show()
+    #Three subplots? + RCG in R while here iCg ==> Ticks
 
 # Correcting the p_values using Bonferroni method.
 # We multiply the p_values to the number of comparison. Here 3 timepoints
@@ -153,13 +159,14 @@ Df_mean_Xt = np.log10(Df_mean_Xt)
 Df_mean_Xt = Df_mean_Xt[
     Df_mean_Xt[Df_mean_Xt.columns] != -np.inf].dropna()  # Dropping rows containing Nan and -Inf values #96 regions
 
-Diff = Df_mean_Xt["Xt_MPI 1"] - Df_mean_Xt["MPI 1"]
+Diff = Df_mean_Xt["Xt_MPI 1"] - Df_mean_Xt["MPI 1"] # Fixed values
 for t in tp:
     Df_mean_Xt["Xt_MPI %d" % t] = Df_mean_Xt["Xt_MPI %d" % t] - Diff # Normalization of the predicted values (log)
 
 # find regions with low average vulnerability at all time points
-vulnerability = vulnerability.dropna() #Check should the same as df.v
-low_vuln = np.where(np.abs(vulnerability).mean(axis=1) < 0.2)[0] # Returns an array containing the index of the areas of low vulnerability
+Df_v = vulnerability[masks]
+Df_v = Df_v.dropna()
+low_vuln = np.where(np.abs(Df_v).mean(axis=1) < 0.2)[0] # Returns an array containing the index of the areas of low vulnerability
 os.chdir(savedir) # Saving in ROIlevels
 for ROI in low_vuln:
     fig = plt.figure()# Ask Mathieu
@@ -170,16 +177,18 @@ for ROI in low_vuln:
     plt.ylabel("Log(Path)")
     plt.title(f"{Lap}Region of Low Vulnerability: {ROInames[ROI]}")
     plt.grid(color="grey")
-    plt.show()
+    #plt.show()
     fig.savefig(f'{Lap}Low_vulnerability_region_{ROInames[ROI]}.png', dpi=300)
     fig.savefig(f'{Lap}Low_vulnerability_region_{ROInames[ROI]}.eps')
 
 # unit test for vulnerability names matching up:
 # regions with vulnerability = 0 should also have group mean pathology = 0
-mpi1 = pd.merge(Grp_mean["MPI 1"], vulnerability['MPI 1'], how='outer', left_index=True, right_index=True)
-mpi2 = pd.merge(Grp_mean["MPI 3"], vulnerability['MPI 3'], how='outer', left_index=True, right_index=True)
-mpi3 = pd.merge(Grp_mean["MPI 6"], vulnerability['MPI 6'], how='outer', left_index=True, right_index=True)
-        ####NOT WORKING
+for i in range(0, 3):
+    path_0 = np.where(Grp_mean.iloc[:, i] == 0)
+    vuln_0 = np.where(vulnerability.iloc[:, i].isna())
+    for k in range(0, len(path_0[0])):
+        if path_0[0][k] != vuln_0[0][k]:
+            print("Vulnerability does not match up with pathology ")
 
 # Saving vulnerability & Predicted_Path
 
