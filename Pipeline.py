@@ -81,15 +81,26 @@ class DataManager(object):
         percentile = percentileofscore(c_values, best_c)
         print('{r} seed is the {p}th percentile\n'.format(r=self.seed, p=percentile))
 
-    def compute_vulnerability(self, c_Grp):
+    def predict_pathology(self, c_Grp, seeding_region=None, suffix=''):
+
+        if seeding_region is None:
+            Xo = fitfunctions.make_Xo(ROI=self.seed, ROInames=self.ROInames)
+        else:
+            Xo = fitfunctions.make_Xo(ROI=seeding_region, ROInames=self.ROInames)
+
+        Xt_Grp = [fitfunctions.predict_Lout(self.l_out, Xo, c_Grp, i) for i in timepoints]
+
+        data_to_export = pd.DataFrame(np.transpose(Xt_Grp), columns=['MPI{}'.format(i) for i in timepoints])
+        data_to_export['regions'] = self.ROInames
+        data_to_export.to_csv('../output/predicted_pathology{}.csv'.format(suffix))
+
+        return Xt_Grp
+
+    def compute_vulnerability(self, Xt_Grp, c_Grp, suffix=''):
 
         vulnerability = pd.DataFrame(0, columns=["MPI 1", "MPI 3", "MPI 6"], index=self.grp_mean.index)
 
-        Xo = fitfunctions.make_Xo(ROI=self.seed, ROInames=self.ROInames)
-        Xt_Grp = [fitfunctions.predict_Lout(self.l_out, Xo, c_Grp, i) for i in timepoints]
-
         stats_df = []
-
         masks = dict()
         for M in range(0, len(timepoints)): # M iterates according to the number of timepoint
             Df = pd.DataFrame({"experimental_data": np.log10(self.grp_mean.iloc[:, M]).values,
@@ -118,7 +129,7 @@ class DataManager(object):
             Df['linreg_data'] = slope * Df['ndm_data'] + intercept
             Df['residual'] = Df['experimental_data'] - Df['linreg_data']
 
-            Df.to_csv('../output/model_output_MPI{}.csv'.format(timepoints[M]))
+            Df.to_csv('../output/model_output_MPI{}{}.csv'.format(timepoints[M], suffix))
 
         stats_df = pd.DataFrame(stats_df)
         # Boneferroni method for correction of pvalues
@@ -136,12 +147,20 @@ if __name__ == '__main__':
 
     timepoints = [1, 3, 6]
 
+    #Load data and computation Laplacian matrices
     dm = DataManager(exp_data=exp_data, synuclein=synuclein, timepoints=timepoints, seed='iCPu')
     dm.compute_graph()
 
+    #Use experimental data to fit the model and find the best c (scaling parameter)
     c = dm.find_best_c()
 
+    #Test robustness of the model by comparing c values for fit in other brain regions
     #dm.random_seeds(best_c=c)
 
-    dm.compute_vulnerability(c_Grp=c)
+    #Predict pathology
+    predicted_pathology = dm.predict_pathology(c_Grp=c)
+    predicted_pathology_seeding_sn = dm.predict_pathology(c_Grp=c, seeding_region='iSN', suffix='_seedSN') #To check
+
+    #Compare model-based prediction with observed data to extrapolate region vulnerability
+    dm.compute_vulnerability(Xt_Grp=predicted_pathology, c_Grp=c)
 
