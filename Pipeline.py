@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 import numpy as np
 
@@ -6,35 +5,12 @@ np.seterr(divide='ignore') #Hide Runtime warning regarding log(0) = -inf
 
 from tqdm import tqdm
 
-import matplotlib.pyplot as plt
-import seaborn as sns
-
 from scipy.stats import pearsonr, linregress, percentileofscore
 from statsmodels.stats.multitest import multipletests
 
 import process_files
 import Laplacian
 import fitfunctions
-
-#basedir = "C:\\Users\\thoma\\Documents\\M1_Neurasmus\\NeuroBIM_M1\\Internship\\GitRepo\\PathoSpreading"
-#os.chdir(basedir)  # Sets the wd
-#opdir = "asyndiffusion3"
-
-#try:
-#    os.mkdir(opdir)
-#except WindowsError as error: # Prevent the algorithm to stop if the folder is already created. For Mac users need to replace by OSError.
-#    print(error)
-
-############################
-####### Process Data #######
-############################
-
-### Load files for Windows
-#exp_data = pd.read_csv("Data83018\\data.csv", header=0)
-#connectivity_ipsi = pd.read_csv("Data83018\\connectivity_ipsi.csv", index_col=0) # Connectivity table
-#connectivity_contra = pd.read_csv("Data83018\\connectivity_contra.csv", index_col=0)
-#coor = pd.read_csv("Data83018\\ROIcoords.csv")
-#synuclein = pd.read_csv("Data83018\\SncaExpression.csv", index_col = 0, header= None)
 
 
 class DataManager(object):
