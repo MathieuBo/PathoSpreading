@@ -26,7 +26,7 @@ def predict_Lout(L_out, Xo, c, t=1):
 
 def c_fit(log_path,L_out,tp,ROI,c_rng,ROInames):
     "Returns the best c fit"
-    Xo = make_Xo(ROI,ROInames)
+    Xo = make_Xo(ROI, ROInames)
     Xt_sweep = np.zeros((len(c_rng), len(tp)))
     # Exclusion mask; we do not count the regions with 0 path
     mask = log_path != -np.inf
@@ -43,5 +43,5 @@ def c_fit(log_path,L_out,tp,ROI,c_rng,ROInames):
 
             Xt_sweep[c_idx, time] += r
     normalized_Xt_sweep = np.mean(Xt_sweep, axis=1)
-    best_c = c_rng[np.where(normalized_Xt_sweep == np.max(normalized_Xt_sweep))][0]# Ajout de [0]
+    best_c = c_rng[np.where(normalized_Xt_sweep == np.max(normalized_Xt_sweep))][0]  # [0] to access the value
     return best_c
