@@ -1,6 +1,3 @@
-"""fitfunctions"""
-"""04/02/2021"""
-# Importing modules
 import numpy as np
 from scipy.linalg import expm
 from scipy import stats
@@ -17,6 +14,7 @@ def make_Xo(ROI, ROInames):
     Xo[idx] += 1
     return Xo
 
+
 def predict_Lout(L_out, Xo, c, t=1):
     """From the Laplacian Matrix, the seed Xo and a time constant c
     this algorithm predicts the regional alpha-synuclein pathology x(t)
@@ -24,9 +22,10 @@ def predict_Lout(L_out, Xo, c, t=1):
     Xt = np.dot(expm(-L_out*c*t), Xo)
     return Xt
 
-def c_fit(log_path,L_out,tp,ROI,c_rng,ROInames):
+
+def c_fit(log_path, L_out, tp, seed, c_rng, roi_names):
     "Returns the best c fit"
-    Xo = make_Xo(ROI, ROInames)
+    Xo = make_Xo(seed, roi_names)
     Xt_sweep = np.zeros((len(c_rng), len(tp)))
     # Exclusion mask; we do not count the regions with 0 path
     mask = log_path != -np.inf
@@ -36,6 +35,8 @@ def c_fit(log_path,L_out,tp,ROI,c_rng,ROInames):
         store = []
         for c_idx, c in enumerate(c_rng):
             exp_val = log_path.iloc[:, time][mask.iloc[:, time]].values
+            test = np.sum(Xo)
+            Xt = predict_Lout(L_out, Xo, c, t=tp[time])
 
             predict_val = np.log10(predict_Lout(L_out, Xo, c, t=tp[time])[mask.iloc[:, time]])
 
