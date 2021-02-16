@@ -87,7 +87,6 @@ c_Grp = c_fit(log_path, L_out, tp, 'R CPu', c_rng,
 Xo = make_Xo('R CPu', ROInames)  # Where we seed our pathology
 vulnerability = pd.DataFrame(0,columns=["MPI 1", "MPI 3", "MPI 6"], index=Grp_mean.index)  # To double check but mask can be removed
 Xt_Grp = [predict_Lout(L_out, Xo, c_Grp, i) for i in tp]
-p_SC = p_vuln = c_tests = pd.DataFrame()
 r_SCc = pd.DataFrame(columns=["MPI", "Pearson r"])
 r_SCp = pd.DataFrame(columns=["MPI", "p_value"])  # Result df to store our correlation coefficients
 p_values_cor = list()

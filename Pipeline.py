@@ -79,6 +79,7 @@ class DataManager(object):
             c_values.append(local_c)
 
         percentile = percentileofscore(c_values, best_c)
+
         print('{r} seed is the {p}th percentile\n'.format(r=self.seed, p=percentile))
 
     def predict_pathology(self, c_Grp, seeding_region=None, suffix=''):
@@ -122,7 +123,7 @@ class DataManager(object):
             print("Month Post Injection %s" % timepoints[M])
             print("Number of Regions used: ", Df.shape[0])
             print("Pearson correlation coefficient", cor['Pearson r'])
-            print('Pvalue (non corrected', cor['p_value'])
+            print('Pvalue (non corrected)', cor['p_value'])
             print('----------------------------\n')
 
             slope, intercept, r_value, p_value, std_err = linregress(x=Df['ndm_data'], y=Df['experimental_data'])
