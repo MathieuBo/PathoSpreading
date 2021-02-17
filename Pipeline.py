@@ -164,4 +164,3 @@ if __name__ == '__main__':
 
     #Compare model-based prediction with observed data to extrapolate region vulnerability
     dm.compute_vulnerability(Xt_Grp=predicted_pathology, c_Grp=c)
-
