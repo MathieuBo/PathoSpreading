@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 np.seterr(divide='ignore') #Hide Runtime warning regarding log(0) = -inf
 
@@ -56,31 +58,115 @@ class DataManager(object):
 
     def find_best_c(self):
 
-        c_Grp = fitfunctions.c_fit(log_path=np.log10(self.grp_mean),
+        c_Grp, r = fitfunctions.c_fit(log_path=np.log10(self.grp_mean),
                                         L_out=self.l_out,
                                         tp=timepoints,
                                         seed=self.seed,
                                         c_rng=self.c_rng,
                                         roi_names=self.ROInames)
 
-        return c_Grp
+        return c_Grp, r
 
-    def random_seeds(self, best_c):
+    def model_robustness(self, best_c, best_r, RandomSeed=False, RandomAdja=False, RandomPath=False):
+    # Random Seed
+        if RandomSeed == True:
+            c_values = []
+            r_val = []
+            print("Loading of Random Seeding test:")
+            for region in tqdm(self.ROInames):
+                local_c, local_r_val = fitfunctions.c_fit(log_path=np.log10(self.grp_mean),
+                                   L_out=self.l_out,
+                                   tp=timepoints,
+                                   seed=region,
+                                   c_rng=self.c_rng,
+                                   roi_names=self.ROInames)
 
-        c_values = []
-        for region in tqdm(self.ROInames):
-            local_c = fitfunctions.c_fit(log_path=np.log10(self.grp_mean),
-                               L_out=self.l_out,
-                               tp=timepoints,
-                               seed=region,
-                               c_rng=self.c_rng,
-                               roi_names=self.ROInames)
+                c_values.append(local_c)
+                r_val.append(local_r_val)
 
-            c_values.append(local_c)
+            percentile = percentileofscore(c_values, best_c)
 
-        percentile = percentileofscore(c_values, best_c)
+            print('{r} seed is the {p}th percentile\n'.format(r=self.seed, p=percentile))
+            print("Plotting the CPu Fit versus Fits of random seed regions... ")
+            RndSeed = pd.DataFrame(r_val, columns=["MPI1", "MPI3", "MPI6"]) # should be same as grp.mean
+            sns.swarmplot(data=RndSeed, size=4, zorder=0)
+            plt.plot(0, r[0], "o", color="red", markersize=3, label="CPu Fit")
+            plt.plot(1, r[1], "o", color="red", markersize=3)
+            plt.plot(2, r[2], "o", color="red", markersize=3)
+            plt.title("CPu versus random seed")
+            plt.ylabel("Fit(r)")
+            plt.legend()
+            plt.show()
+        else:
+            print("Robustness- Random seeding ignored")
+    #Random Adjacency Matrix
+        if RandomAdja == True:
+            c_adj = []
+            r_adj = []
+            print("Loading of Random Shuffling test (Adjacency matrix):")
+            for i in tqdm(range(0, 100)):# Adding an input for the iteration?
+                np.random.shuffle(self.W.values) #CAREFUL => Does it modify W somewhere else outside the function?
+                random_Lap = Laplacian.get_laplacian(adj_mat=self.W, expression_data=None, return_in_degree=False)
+                c_rand, r_rand = fitfunctions.c_fit(log_path=np.log10(self.grp_mean),
+                                                    L_out=random_Lap,
+                                                    tp=timepoints,
+                                                    seed='iCPu',
+                                                    c_rng=self.c_rng,
+                                                    roi_names=self.ROInames)
+                c_adj.append(c_rand)
+                r_adj.append(r_rand)
 
-        print('{r} seed is the {p}th percentile\n'.format(r=self.seed, p=percentile))
+            percentile = percentileofscore(c_adj, best_c)
+
+            print('{r} seed is the {p}th percentile\n'.format(r='iCPu', p=percentile))
+            print("Plotting the adjacency matrix Fit versus Fits of random adjacency matrices... ")
+            RndAdj = pd.DataFrame(r_adj, columns=["MPI1", "MPI3", "MPI6"])
+            sns.swarmplot(data=RndAdj, size=4, zorder=0)
+            plt.plot(0, r[0], "o", color="red", markersize=3, label="Non-shuffled Adjacency Fit")
+            plt.plot(1, r[1], "o", color="red", markersize=3)
+            plt.plot(2, r[2], "o", color="red", markersize=3)
+            plt.title("Non-shuffled Adjacency Fit versus random Adjacency shuffle")
+            plt.ylabel("Fit(r)")
+            plt.legend()
+            plt.show()
+        else:
+            print("Robustness- Random Shuffle of Adjacency matrix ignored")
+    # Random Pathology Matrix
+        if RandomPath == True:
+            self.W, self.path_data, self.conn_names, self.orig_order, self.n_regions, self.ROInames = process_files.process_pathdata(
+                exp_data=exp_data,
+                connectivity_contra=self.connectivity_contra,
+                connectivity_ipsi=self.connectivity_ipsi) # To check; Reimporting path_data to make sure to have a version that did not get modified
+            c_path = []
+            r_path = []
+            print("Loading of Random Pathology test:")
+            for i in tqdm(range(0, 100)):
+                path_val = self.path_data.iloc[:, 2::].values
+                np.random.shuffle(path_val)
+                self.path_data.iloc[:, 2::] = path_val
+                grp_mean = process_files.mean_pathology(timepoints=timepoints, path_data=self.path_data)
+                Lap = Laplacian.get_laplacian(adj_mat=self.W, expression_data=None, return_in_degree=False)
+                c_rand, r_rand = fitfunctions.c_fit(log_path=np.log10(grp_mean), L_out=Lap, tp=timepoints, seed='iCPu',
+                                                    c_rng=self.c_rng,
+                                                    roi_names=self.ROInames)
+                c_path.append(c_rand)
+                r_path.append(r_rand)
+            percentile = percentileofscore(c_path, best_c)
+            print('{r} seed is the {p}th percentile\n'.format(r='iCPu', p=percentile))
+            print("Plotting the non-shuffled pathology Fit versus shuffled pathology fits ")
+            RndPath = pd.DataFrame(r_path, columns=["MPI1", "MPI3", "MPI6"])
+            sns.swarmplot(data=RndPath, size=4, zorder=0)
+            plt.plot(0, r[0], "o", color="red", markersize=3, label="Non-shuffled Adjacency Fit")
+            plt.plot(1, r[1], "o", color="red", markersize=3)
+            plt.plot(2, r[2], "o", color="red", markersize=3)
+            plt.title("Non-shuffled pathology Fit versus shuffled pathology fits")
+            plt.ylabel("Fit(r)")
+            plt.legend()
+            plt.show()
+        else:
+            print("Robustness- Random Shuffle of Pathology matrix ignored")
+
+
 
     def predict_pathology(self, c_Grp, seeding_region=None, suffix=''):
 
@@ -152,15 +238,16 @@ if __name__ == '__main__':
     dm = DataManager(exp_data=exp_data, synuclein=synuclein, timepoints=timepoints, seed='iCPu')
     dm.compute_graph()
 
-    #Use experimental data to fit the model and find the best c (scaling parameter)
-    c = dm.find_best_c()
+    #Use experimental data to fit the model and find the best c (scaling parameter) and best r
+    c, r = dm.find_best_c()
 
     #Test robustness of the model by comparing c values for fit in other brain regions
-    #dm.random_seeds(best_c=c)
+    dm.model_robustness(best_c=c, best_r=r, RandomSeed=True, RandomAdja=True, RandomPath=True)
+    # If all True takes X min to run the code
 
     #Predict pathology
     predicted_pathology = dm.predict_pathology(c_Grp=c)
-    predicted_pathology_seeding_sn = dm.predict_pathology(c_Grp=c, seeding_region='iSN', suffix='_seedSN') #To check
+    predicted_pathology_seeding_sn = dm.predict_pathology(c_Grp=c, seeding_region='iSN', suffix='_seedSN')
 
     #Compare model-based prediction with observed data to extrapolate region vulnerability
     dm.compute_vulnerability(Xt_Grp=predicted_pathology, c_Grp=c)
