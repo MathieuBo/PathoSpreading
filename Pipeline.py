@@ -90,10 +90,9 @@ class DataManager(object):
             print("Plotting the CPu Fit versus Fits of random seed regions... ")
             RndSeed = pd.DataFrame(r_val, columns=["MPI1", "MPI3", "MPI6"]) # should be same as grp.mean
             sns.swarmplot(data=RndSeed, size=4, zorder=0)
-            plt.plot(0, r[0], "o", color="red", markersize=3, label="CPu Fit")
-            plt.plot(1, r[1], "o", color="red", markersize=3)
-            plt.plot(2, r[2], "o", color="red", markersize=3)
-            plt.title("CPu versus random seed")
+            for time in range(0,len(timepoints)):
+                plt.plot(time, best_r[time], "o", color="red", markersize=3)
+            plt.title("CPu seed VS random region seed")
             plt.ylabel("Fit(r)")
             plt.legend()
             plt.show()
@@ -104,7 +103,7 @@ class DataManager(object):
             c_adj = []
             r_adj = []
             print("Loading of Random Shuffling test (Adjacency matrix):")
-            for i in tqdm(range(0, 100)):# Adding an input for the iteration?
+            for i in tqdm(range(0, 150)):# Adding an input for the iteration?
                 np.random.shuffle(self.W.values) #CAREFUL => Does it modify W somewhere else outside the function?
                 random_Lap = Laplacian.get_laplacian(adj_mat=self.W, expression_data=None, return_in_degree=False)
                 c_rand, r_rand = fitfunctions.c_fit(log_path=np.log10(self.grp_mean),
@@ -122,16 +121,15 @@ class DataManager(object):
             print("Plotting the adjacency matrix Fit versus Fits of random adjacency matrices... ")
             RndAdj = pd.DataFrame(r_adj, columns=["MPI1", "MPI3", "MPI6"])
             sns.swarmplot(data=RndAdj, size=4, zorder=0)
-            plt.plot(0, r[0], "o", color="red", markersize=3, label="Non-shuffled Adjacency Fit")
-            plt.plot(1, r[1], "o", color="red", markersize=3)
-            plt.plot(2, r[2], "o", color="red", markersize=3)
-            plt.title("Non-shuffled Adjacency Fit versus random Adjacency shuffle")
+            for time in range(0,len(timepoints)):
+                plt.plot(time, best_r[time], "o", color="red", markersize=3)
+            plt.title("Adjacency Fit VS random Adjacency shuffle fits")
             plt.ylabel("Fit(r)")
             plt.legend()
             plt.show()
         else:
             print("Robustness- Random Shuffle of Adjacency matrix ignored")
-    # Random Pathology Matrix
+    # Random Pathology Mean Matrix
         if RandomPath == True:
             self.W, self.path_data, self.conn_names, self.orig_order, self.n_regions, self.ROInames = process_files.process_pathdata(
                 exp_data=exp_data,
@@ -139,12 +137,11 @@ class DataManager(object):
                 connectivity_ipsi=self.connectivity_ipsi) # To check; Reimporting path_data to make sure to have a version that did not get modified
             c_path = []
             r_path = []
-            print("Loading of Random Pathology test:")
-            for i in tqdm(range(0, 100)):
-                path_val = self.path_data.iloc[:, 2::].values
-                np.random.shuffle(path_val)
-                self.path_data.iloc[:, 2::] = path_val
+            print("Loading of Random Pathology Mean test:")
+            for i in tqdm(range(0, 150)):
                 grp_mean = process_files.mean_pathology(timepoints=timepoints, path_data=self.path_data)
+                for time in range(0, len(timepoints)):
+                    np.random.shuffle(grp_mean.values[:, time])  # Shuffling data of a same timepoint
                 Lap = Laplacian.get_laplacian(adj_mat=self.W, expression_data=None, return_in_degree=False)
                 c_rand, r_rand = fitfunctions.c_fit(log_path=np.log10(grp_mean), L_out=Lap, tp=timepoints, seed='iCPu',
                                                     c_rng=self.c_rng,
@@ -156,15 +153,14 @@ class DataManager(object):
             print("Plotting the non-shuffled pathology Fit versus shuffled pathology fits ")
             RndPath = pd.DataFrame(r_path, columns=["MPI1", "MPI3", "MPI6"])
             sns.swarmplot(data=RndPath, size=4, zorder=0)
-            plt.plot(0, r[0], "o", color="red", markersize=3, label="Non-shuffled Adjacency Fit")
-            plt.plot(1, r[1], "o", color="red", markersize=3)
-            plt.plot(2, r[2], "o", color="red", markersize=3)
-            plt.title("Non-shuffled pathology Fit versus shuffled pathology fits")
+            for time in range(0,len(timepoints)):
+                plt.plot(time, best_r[time], "o", color="red", markersize=3)
+            plt.title("Pathology mean/timepoint fit VS shuffled pathology mean/timepoints fits")
             plt.ylabel("Fit(r)")
             plt.legend()
             plt.show()
         else:
-            print("Robustness- Random Shuffle of Pathology matrix ignored")
+            print("Robustness- Random Shuffle of Pathology Mean matrix ignored")
 
 
 
@@ -242,8 +238,8 @@ if __name__ == '__main__':
     c, r = dm.find_best_c()
 
     #Test robustness of the model by comparing c values for fit in other brain regions
-    dm.model_robustness(best_c=c, best_r=r, RandomSeed=True, RandomAdja=True, RandomPath=True)
-    # If all True takes X min to run the code
+    #dm.model_robustness(best_c=c, best_r=r, RandomSeed=True, RandomAdja=True, RandomPath=True)
+    # If all True takes 20-25 min to run the code
 
     #Predict pathology
     predicted_pathology = dm.predict_pathology(c_Grp=c)

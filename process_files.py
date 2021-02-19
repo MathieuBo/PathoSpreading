@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def process_pathdata(exp_data, connectivity_ipsi, connectivity_contra):
+def process_pathdata(exp_data, connectivity_ipsi, connectivity_contra, nb_region=None):
 
     """ Function to create connectivity matrix
     ---
@@ -46,12 +46,24 @@ def process_pathdata(exp_data, connectivity_ipsi, connectivity_contra):
                 # Returns a list containing the ranks of path_names_contra that fits conn.names
 
     # Creation of path_data
-    path_data = pd.concat([exp_data.loc[:, exp_data.columns[0:2]._index_data],
+    if nb_region==None:
+        path_data = pd.concat([exp_data.loc[:, exp_data.columns[0:2]._index_data],
                            path_data_ipsi.loc[:, path_data_ipsi.columns._index_data[ordered_matched_ipsi]],
                            path_data_contra.loc[:, path_data_contra.columns._index_data[ordered_matched_contra]]],
                           axis=1)
 
-    path_data = path_data.rename(columns={"MBSC Region": "Conditions"})  # Renaming a column
+        path_data = path_data.rename(columns={"MBSC Region": "Conditions"})  # Renaming a column
+    else:
+        path_data = pd.concat([exp_data.loc[:, exp_data.columns[0:2]._index_data],
+                               path_data_ipsi.loc[:, path_data_ipsi.columns._index_data[ordered_matched_ipsi]],
+                               path_data_contra.loc[:, path_data_contra.columns._index_data[ordered_matched_contra]]],
+                              axis=1)
+        path_data = path_data.rename(columns={"MBSC Region": "Conditions"})  # Renaming a column
+        path_data = path_data[['Time post-injection (months)','Conditions','iCPu'] +
+                  [c for c in path_data if c not in ['Time post-injection (months)', 'Conditions', 'iCPu']]]
+        path_data = pd.DataFrame(path_data.values[:, 0:nb_region+2], columns=path_data.columns[0:nb_region+2])
+    #Reorganizing so that the seed "iCPu" is the first column
+
 
     # tile matrix such that sources are rows, columns are targets (Oh et al. 2014 Fig 4)
     connectivity_ipsi.columns = conn_names  # Sets the names of the columns and the index to be the same using the list conn_names
@@ -60,8 +72,26 @@ def process_pathdata(exp_data, connectivity_ipsi, connectivity_contra):
     connectivity_contra.columns = conn_names
     connectivity_contra.index = conn_names
 
-    W = pd.concat([pd.concat([connectivity_ipsi, connectivity_contra], axis=1),
+    if nb_region == None:
+        W = pd.concat([pd.concat([connectivity_ipsi, connectivity_contra], axis=1),
                    pd.concat([connectivity_contra, connectivity_ipsi], axis=1)], axis=0)
+    else:
+        # Reindexing with Seed as first column and Row
+        connectivity_ipsi = connectivity_ipsi[["CPu"] + [c for c in connectivity_ipsi if c not in ['CPu']]]
+        connectivity_ipsi = connectivity_ipsi.reindex(
+            ["CPu"] + [c for c in connectivity_ipsi.index if c not in ["CPu"]])
+
+        connectivity_contra = connectivity_contra[["CPu"] + [c for c in connectivity_contra if c not in ['CPu']]]
+        connectivity_contra = connectivity_contra.reindex(
+            ["CPu"] + [c for c in connectivity_contra.index if c not in ["CPu"]])
+
+        # Sectioning the connectivity matrix
+        sect_conn_ipsi = pd.DataFrame(connectivity_ipsi.values[0:nb_region, 0:nb_region], index=connectivity_ipsi.index[0:nb_region],
+                                          columns=connectivity_ipsi.columns[0:nb_region])
+        sect_conn_contra = pd.DataFrame(connectivity_contra.values[0:nb_region, 0:nb_region], index=connectivity_contra.index[0:nb_region],
+                                            columns=connectivity_contra.columns[0:nb_region])
+        W = pd.concat([pd.concat([sect_conn_ipsi, sect_conn_contra], axis=1),
+                           pd.concat([sect_conn_contra, sect_conn_ipsi], axis=1)], axis=0)
 
     # Connectivity Matrix
     n_regions = len(W)  #Must be 116
@@ -74,7 +104,8 @@ def process_pathdata(exp_data, connectivity_ipsi, connectivity_contra):
 
     # retain indices to reorder like original data variable for plotting on mouse brains
     ROInames = ["i" + i for i in conn_names] + ["c" + i for i in conn_names]
-        # List of ROI w/ first the contro regions and then the ipsi regions.
+            # List of ROI w/ first the contro regions and then the ipsi regions.
+
     orig_order = []
     for i in range(0, len(ROInames)):  # Reordering according to ROInames
         for k in range(0, len(exp_data.columns._index_data) - 2):
