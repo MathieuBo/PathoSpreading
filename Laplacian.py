@@ -2,15 +2,15 @@ import numpy as np
 
 
 def get_laplacian(adj_mat, expression_data=None, return_in_degree=False):
-    """ Get Laplacian from adjacency matrix
+    """ Compute the Degree Matrix from adjacency matrix and then compute the Laplacian Matrix.
     ---
     Inputs:
-        adj_mat: adjacency matrix created  in processed_files
-        expression_data (default: None) : expression data created in processed
+        adj_mat: adjacency matrix created  in processed_files, DataFrame
+        expression_data (default: None) : expression data created in processed, DataFrame
         return_in_degree (default: False): Boolean to return in degree Laplacian matrix
     ---
     Outputs:
-        laplacian: (out degree) laplacian matrix
+        laplacian: (out degree) laplacian matrix, array.
         (optional): in_degree_laplacian: in degree laplacian matrix
     """
 

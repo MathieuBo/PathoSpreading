@@ -6,7 +6,15 @@ from scipy import stats
 def make_Xo(ROI, ROInames):
     """From a ROI (str) and by matching with the index of the ROInames,
     it returns a column vector filled with 0 except at the index of the
-    ROI where the value will be 1. """
+    ROI where the value will be 1.
+    ---
+    Inputs:
+    ROI --> String of the ROI e.g "iCPu"
+    ROInames --> Ordered list of ROI created in process_pathdata
+    ---
+    Outputs:
+    Xo --> DataFrame (vector columns). Size = len(ROInames) and contains zeros except at the ROI index where the value is 1
+    """
     n_regions = len(ROInames)
     # Initialisation of the Xo Vector at t = 0
     Xo = np.zeros((n_regions, ))
@@ -18,12 +26,36 @@ def make_Xo(ROI, ROInames):
 def predict_Lout(L_out, Xo, c, t=1):
     """From the Laplacian Matrix, the seed Xo and a time constant c
     this algorithm predicts the regional alpha-synuclein pathology x(t)
-    Returns the column vector Xt"""
+    Returns the column vector Xt
+    ---
+    Inputs:
+    L_out --> Laplacian Matrix as computed in Laplacian.py. Array.
+    Xo --> DataFrame. Column of 0 beside at the seed index position.
+    c --> Constant to tune the time scale. Integer
+    t --> Timepoint. t=1 if not explicit.
+    ---
+    Outputs:
+    Xt --> Column array that contains the magnitude of the alpha-synuclein spreading
+    """
     Xt = np.dot(expm(-L_out*c*t), Xo)
     return Xt
 
 def c_fit(log_path, L_out, tp, seed, c_rng, roi_names):
-    "Returns the best c fit"
+    """
+    Iterates the c-values to extract subsequent predicted magnitude Xt and compare them to
+    the quantified data to return the best tuning constant c et the equivalent R correlation coefficient
+    ---
+    Inputs:
+    log_path --> log10 of grp_mean. Grp_mean is the Dataframe with mean pathology per group, timepoints and regions
+    L_out --> Laplacian matrice, array
+    tp --> Timepoint, list
+    c_rng --> Constant to tune the time scale
+    roi_names --> ROInames
+    ---
+    Outputs:
+    c --> Best c fit.
+    r --> Best correlation coefficient r
+    """
     Xo = make_Xo(seed, roi_names)
     Xt_sweep = np.zeros((len(c_rng), len(tp)))
     # Exclusion mask; we do not count the regions with 0 path

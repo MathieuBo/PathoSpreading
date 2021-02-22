@@ -19,9 +19,9 @@ try:
 except WindowsError as error:
     print(error)  # Prevent the algorithm to stop if the folder is already created. For Mac users need to replace by OSError.
 
-data = pd.read_csv("Data83018\\data.csv", header=0)  # DataFrame with header, alpha-syn quantified in each brain region
-connectivity_ipsi = pd.read_csv("Data83018\\connectivity_ipsi.csv", index_col=0) # Connectivity table
-connectivity_contra = pd.read_csv("Data83018\\connectivity_contra.csv", index_col=0)
+data = pd.read_csv("../Data83018/data.csv", header=0)  # DataFrame with header, alpha-syn quantified in each brain region
+connectivity_ipsi = pd.read_csv("../Data83018/connectivity_ipsi.csv", index_col=0) # Connectivity table
+connectivity_contra = pd.read_csv("../Data83018/connectivity_contra.csv", index_col=0)
 
 ########################
 ##PROCESS REGION NAMES##
@@ -105,7 +105,7 @@ pickle.dump(path_data_objects, path_data_pickle_out)
 ##PROCESS ROI COORDINATES##
 ###########################
 os.chdir(basedir)  # Sets the wd for loading the data
-coor = pd.read_csv("Data83018\\ROIcoords.csv")
+coor = pd.read_csv("../Data83018/ROIcoords.csv")
 coor.rename(columns = {'Unnamed: 0':'ROI'}, inplace = True)
 idx = []
 for i in range(0, len(ROInames)): # Reordering according to ROInames
@@ -122,7 +122,7 @@ coor.to_csv('coor.csv')
 ### Process Snca Expression ###
 ###############################
 os.chdir(basedir)  # Sets the wd back
-synuclein = pd.read_csv("Data83018\\SncaExpression.csv", index_col = 0, header= None)
+synuclein = pd.read_csv("../Data83018/SncaExpression.csv", index_col = 0, header= None)
 synuclein_ordered = []
 for i in range(0, len(ROInames)): # Reordering according to ROInames
     for k in range(0, len(synuclein.index)):

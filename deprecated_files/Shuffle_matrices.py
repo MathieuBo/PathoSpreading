@@ -11,9 +11,9 @@ from tqdm import tqdm
 from scipy.stats import pearsonr, linregress, percentileofscore
 
 # DataFrame with header, pS129-alpha-syn quantified in each brain region
-exp_data = pd.read_csv("./Data83018/data.csv", header=0)
-connectivity_ipsi = pd.read_csv("./Data83018/connectivity_ipsi.csv", index_col=0)
-connectivity_contra = pd.read_csv("./Data83018/connectivity_contra.csv", index_col=0)
+exp_data = pd.read_csv("../Data83018/data.csv", header=0)
+connectivity_ipsi = pd.read_csv("../Data83018/connectivity_ipsi.csv", index_col=0)
+connectivity_contra = pd.read_csv("../Data83018/connectivity_contra.csv", index_col=0)
 
 # Processing the Data
 timepoints = [1, 3, 6]

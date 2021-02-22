@@ -3,10 +3,8 @@
 # Importing modules
 # Modules for plotting
 from scipy import stats
-import numpy as np
-from Pipeline import *
 from fitfunctions import c_fit, make_Xo, predict_Lout
-from process_pathconn import *
+from deprecated_files.process_pathconn import *
 from matplotlib import pyplot as plt
 import seaborn as sns
 

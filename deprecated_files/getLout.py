@@ -60,7 +60,7 @@ np.savetxt('L_out.csv', L_out, delimiter=",")  # Added, need to check if effect 
 ##################################
 os.chdir(basedir)  # Sets the wd to \\GitRepo\\PathoSpreading'
 # Loading Snca and diagonalizing it
-Snca = pd.read_csv("Data83018/Snca.csv")
+Snca = pd.read_csv("../Data83018/Snca.csv")
 Snca = Snca.values[:, 0]
 Snca = np.diag(Snca)
 

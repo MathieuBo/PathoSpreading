@@ -13,6 +13,7 @@ from statsmodels.stats.multitest import multipletests
 import process_files
 import Laplacian
 import fitfunctions
+import Model_Stability
 
 
 class DataManager(object):
@@ -26,7 +27,7 @@ class DataManager(object):
 
         self.connectivity_contra = pd.read_csv("./Data83018/connectivity_contra.csv", index_col=0)
 
-        self.W, self.path_data, self.conn_names, self.orig_order, self.n_regions, self.ROInames = process_files.process_pathdata(exp_data=exp_data,
+        self.W, self.path_data, self.conn_names, self.ROInames = process_files.process_pathdata(exp_data=exp_data,
                                                                                                    connectivity_contra=self.connectivity_contra,
                                                                                                    connectivity_ipsi=self.connectivity_ipsi)
 
@@ -131,7 +132,7 @@ class DataManager(object):
             print("Robustness- Random Shuffle of Adjacency matrix ignored")
     # Random Pathology Mean Matrix
         if RandomPath == True:
-            self.W, self.path_data, self.conn_names, self.orig_order, self.n_regions, self.ROInames = process_files.process_pathdata(
+            self.W, self.path_data, self.conn_names, self.ROInames = process_files.process_pathdata(
                 exp_data=exp_data,
                 connectivity_contra=self.connectivity_contra,
                 connectivity_ipsi=self.connectivity_ipsi) # To check; Reimporting path_data to make sure to have a version that did not get modified
@@ -219,7 +220,22 @@ class DataManager(object):
         _, stats_df['adj_p_value'], _, _ = multipletests(stats_df['p_value'], method="bonferroni")
 
         stats_df.to_csv('../output/stats.csv')
-
+    def compute_stability(self, graph= False):
+        stability = Model_Stability.stability(exp_data=exp_data, connectivity_ipsi=self.connectivity_ipsi,
+                                              connectivity_contra=self.connectivity_contra,
+                                              nb_region=nb_region, timepoints=timepoints, c_rng=self.c_rng)
+        if graph == True:
+            for idx, time in enumerate(timepoints):
+                sns.scatterplot(stability["Number Regions"], stability["MPI{}".format(time)])
+                plt.hlines(y=r[idx], xmin=0, xmax=nb_region, color="red", label="Best r fit")
+                plt.title("Stability of the model, MPI{}".format(time))
+                plt.ylabel("Fit(r)")
+                plt.xlabel("Number of regions used")
+                plt.legend()
+                plt.show()
+        else:
+            print("")
+        return stability
 
 if __name__ == '__main__':
 
@@ -247,3 +263,7 @@ if __name__ == '__main__':
 
     #Compare model-based prediction with observed data to extrapolate region vulnerability
     dm.compute_vulnerability(Xt_Grp=predicted_pathology, c_Grp=c)
+
+    #Stability of the model
+    nb_region = 58
+    dm.compute_stability(graph=True)

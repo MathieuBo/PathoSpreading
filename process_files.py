@@ -3,17 +3,24 @@ import numpy as np
 
 def process_pathdata(exp_data, connectivity_ipsi, connectivity_contra, nb_region=None):
 
-    """ Function to create connectivity matrix
+    """
+    Function that processes the quantified alpha-synuclein data and the connectivity maps (ipsilateral and controlateral)
+    Chosing a number of regions will return segmented part of W and Path_data which first data elements will be the
+    values of the seed CPu.
+    Possibility to implement an argument seed to consider which element is the seed and subsequently include it
+    when nb_regions non-null
     ---
     Inputs:
+        exp_data --> Table that contains the values of the quantified alpha-synuclein pathology measured at different
+        timepoints and with different conditions.
+        connectivity_ipsi/contra --> Connectivity tables, the index and the columns are the regions of interest
+
 
     ---
     Outputs:
-        W --> adjacency matrix
-        path_data --> experimental data
-        conn_names --> brain region names
-        orig_order --> original order of the brain regions (to be removed ??)
-        n_regions --> number of regions (ipsi+contra - to be removed??)
+        W --> adjacency matrix shaped in a DataFrame
+        path_data --> experimental DataFrame that contains the alpha-syn quantification
+        conn_names --> List of brain region names
         ROI_names --> ordered list of iRegions and then cRegions
     """
     conn_names = [i.split(' (')[0] for i in connectivity_contra.columns]
@@ -59,9 +66,11 @@ def process_pathdata(exp_data, connectivity_ipsi, connectivity_contra, nb_region
                                path_data_contra.loc[:, path_data_contra.columns._index_data[ordered_matched_contra]]],
                               axis=1)
         path_data = path_data.rename(columns={"MBSC Region": "Conditions"})  # Renaming a column
-        path_data = path_data[['Time post-injection (months)','Conditions','iCPu'] +
-                  [c for c in path_data if c not in ['Time post-injection (months)', 'Conditions', 'iCPu']]]
-        path_data = pd.DataFrame(path_data.values[:, 0:nb_region+2], columns=path_data.columns[0:nb_region+2])
+        path_data_i = path_data[['Time post-injection (months)','Conditions','iCPu'] +
+                                [i for i in path_data_ipsi.loc[:, path_data_ipsi.columns._index_data[ordered_matched_ipsi]] if i not in ['Time post-injection (months)', 'Conditions', 'iCPu']]]
+        path_data_c= path_data[['Time post-injection (months)','Conditions','cCPu'] +
+                               [i for i in path_data_contra.loc[:, path_data_contra.columns._index_data[ordered_matched_contra]] if i not in ['Time post-injection (months)', 'Conditions', 'cCPu']]]
+        path_data = pd.concat([path_data_i.iloc[:, 0:nb_region+2], path_data_c.iloc[:, 2:nb_region+2]], axis=1)
     #Reorganizing so that the seed "iCPu" is the first column
 
 
@@ -93,9 +102,6 @@ def process_pathdata(exp_data, connectivity_ipsi, connectivity_contra, nb_region
         W = pd.concat([pd.concat([sect_conn_ipsi, sect_conn_contra], axis=1),
                            pd.concat([sect_conn_contra, sect_conn_ipsi], axis=1)], axis=0)
 
-    # Connectivity Matrix
-    n_regions = len(W)  #Must be 116
-
     # Checking if the matrix was tiled properly
     if (((W.iloc[0:57, 0:57] != W.iloc[0:57, 0:57]).sum()).sum() > 0):  # Summing over columns and then rows
         print("!!! Adjacency matrix: failed concatenation !!!")  # If False the double sum equals 0
@@ -112,11 +118,11 @@ def process_pathdata(exp_data, connectivity_ipsi, connectivity_contra, nb_region
             if ROInames[k] == exp_data.columns._index_data[2::][i]:
                 orig_order.append(k)  # List containing the index of the original data
 
-    return W, path_data, conn_names, orig_order, n_regions, ROInames
+    return W, path_data, conn_names, ROInames
 
 
 def process_roi_coord(coor, roi_names):
-    """ Function to process roi coordinates table
+    """ Function to process roi coordinates table. Reindex the coordinate table.
     ---
     Inputs:
         coor --> ROIcoords.csv table
@@ -125,7 +131,6 @@ def process_roi_coord(coor, roi_names):
     Outputs:
         coor --> input matrix with sorted rows
     """
-
 
     coor.rename(columns={'Unnamed: 0': 'ROI'}, inplace=True)
     idx = []
@@ -143,11 +148,11 @@ def process_gene_expression_data(expression, roi_names):
     """ Function to process gene expression data
     ---
     Inputs:
-        expression --> pandas dataframe containing expression data per region
-        roi_names --> ROInames created in process_pathdata
+        expression --> Pandas DataFrame containing the gene expression data per region
+        roi_names --> ROInames created in process_pathdata. List of ordered ROInames (first iROI then cROI)
     ---
     Outputs:
-        ordered expression data as pandas Dataframe
+        Ordered expression data as pandas Dataframe. Panda DataFrame
     """
 
     expression_ordered = []
@@ -161,11 +166,11 @@ def process_gene_expression_data(expression, roi_names):
 
 def mean_pathology(timepoints, path_data):
     """
-    Process experimental data to return mean per group and timepoint
+    Process experimental data to return mean per group and per timepoint
     ---
     Inputs:
         timepoints: list of experimental timepoints
-        path_data: path_data created in process_path_data
+        path_data: path_data created in process_path_data. Contains the pathology data quantified.
     ---
     Outputs:
         grp_mean: Dataframe with mean pathology per group, timepoints and regions
