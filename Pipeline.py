@@ -96,6 +96,8 @@ class DataManager(object):
             plt.title("CPu seed VS random region seed")
             plt.ylabel("Fit(r)")
             plt.legend()
+            plt.savefig('../plots/Random_Seed.png', dpi=300)
+            plt.savefig('../plots/Random_Seed.pdf', dpi=300)
             plt.show()
         else:
             print("Robustness- Random seeding ignored")
@@ -127,6 +129,8 @@ class DataManager(object):
             plt.title("Adjacency Fit VS random Adjacency shuffle fits")
             plt.ylabel("Fit(r)")
             plt.legend()
+            plt.savefig('../plots/Random_Adja.png', dpi=300)
+            plt.savefig('../plots/Random_Adja.pdf', dpi=300)
             plt.show()
         else:
             print("Robustness- Random Shuffle of Adjacency matrix ignored")
@@ -159,6 +163,8 @@ class DataManager(object):
             plt.title("Pathology mean/timepoint fit VS shuffled pathology mean/timepoints fits")
             plt.ylabel("Fit(r)")
             plt.legend()
+            plt.savefig('../plots/Random_Patho.png', dpi=300)
+            plt.savefig('../plots/Random_Patho.pdf', dpi=300)
             plt.show()
         else:
             print("Robustness- Random Shuffle of Pathology Mean matrix ignored")
@@ -212,15 +218,76 @@ class DataManager(object):
             slope, intercept, r_value, p_value, std_err = linregress(x=Df['ndm_data'], y=Df['experimental_data'])
             Df['linreg_data'] = slope * Df['ndm_data'] + intercept
             Df['residual'] = Df['experimental_data'] - Df['linreg_data']
-
+            # Saving the data as csv
             Df.to_csv('../output/model_output_MPI{}{}.csv'.format(timepoints[M], suffix))
+
+        # Saving the lollipop plots
+        for time in timepoints:
+            mpi = pd.read_csv('../output/model_output_MPI{}.csv'.format(time, suffix))
+            mpi = mpi.rename(columns={'Unnamed: 0': 'region'})
+            plt.figure()
+            plt.vlines(mpi["ndm_data"], mpi['linreg_data'], mpi['linreg_data'] + mpi['residual'] - 0.04,
+                       lw=0.8, color='blue', linestyles="dotted", label="Residual")
+            sns.regplot(mpi["ndm_data"], mpi["experimental_data"], data=mpi,
+                        scatter_kws={'s': 40, 'facecolor': 'blue'})
+            plt.xlabel("Log(Predicted)")
+            plt.ylabel("Log(Path)")
+            plt.title("Month Post Injection {}".format(time))
+            plt.legend()
+            plt.grid(color="grey")
+
+            plt.savefig('../plots/Predicted_VS_Path_MPI{}.png'.format(time, suffix), dpi=300) #Need to create the folder plots
+            plt.savefig('../plots/Predicted_VS_Path_MPI{}.pdf'.format(time, suffix), dpi=300) #Need to create the folder plots
+
+            plt.show()
+        # Saving the density Vs Residual plots
+        plt.figure()
+        for time in timepoints:
+            mpi = pd.read_csv('../output/model_output_MPI{}.csv'.format(time, suffix))
+            mpi = mpi.rename(columns={'Unnamed: 0': 'region'})
+            sns.kdeplot(x='residual', data=mpi, label='{} MPI'.format(time))
+            plt.title("Density(residual)")
+            plt.legend(title='Timepoints')
+        plt.savefig('../plots/density_VS_residual.png', dpi=300)
+        plt.savefig('../plots/density_VS_residual.pdf', dpi=300)
+        plt.show()
 
         stats_df = pd.DataFrame(stats_df)
         # Boneferroni method for correction of pvalues
         _, stats_df['adj_p_value'], _, _ = multipletests(stats_df['p_value'], method="bonferroni")
 
         stats_df.to_csv('../output/stats.csv')
-    def compute_stability(self, graph= False):
+
+    def vulnerability_heatmap(self, Drop_Seed=False):
+        patho = pd.read_csv('../output/predicted_pathology.csv')
+        if Drop_Seed == False:
+            plt.figure(figsize=(10, 25))
+            norm_path = patho[['MPI1', 'MPI3', 'MPI6']].values
+            norm_path = (norm_path - np.min(norm_path)) / (np.max(norm_path) - np.min(norm_path))
+            plt.imshow(norm_path, cmap='BuPu', aspect=.1)
+            plt.yticks(np.arange(patho.shape[0]), patho['regions'])
+            plt.xticks(np.arange(patho.columns[1:4].shape[0]), patho.columns[1:4])
+            plt.title("Vulnerability")
+            plt.colorbar()
+            plt.savefig("../plots/Vulnerability_CPu_included.png", dpi =300)
+            plt.savefig("../plots/Vulnerability_CPu_included.pdf", dpi=300)
+            plt.show()
+        else:
+            patho= patho.drop(15)
+            plt.figure(figsize=(10, 25))
+            norm_path = patho[['MPI1', 'MPI3', 'MPI6']].values
+            norm_path = (norm_path - np.min(norm_path)) / (np.max(norm_path) - np.min(norm_path))
+            plt.imshow(norm_path, cmap='BuPu', aspect=.1)
+            plt.yticks(np.arange(patho.shape[0]), patho['regions'])
+            plt.xticks(np.arange(patho.columns[1:4].shape[0]), patho.columns[1:4])
+            plt.title("Vulnerability - CPu excluded")
+            plt.colorbar()
+            plt.savefig("../plots/Vulnerability_CPu_excluded.pdf", dpi=300)
+            plt.savefig("../plots/Vulnerability_CPu_excluded.png", dpi=300)
+            plt.show()
+
+
+    def compute_stability(self, graph=False, suffix=''):
         stability = Model_Stability.stability(exp_data=exp_data, connectivity_ipsi=self.connectivity_ipsi,
                                               connectivity_contra=self.connectivity_contra,
                                               nb_region=nb_region, timepoints=timepoints, c_rng=self.c_rng)
@@ -232,6 +299,8 @@ class DataManager(object):
                 plt.ylabel("Fit(r)")
                 plt.xlabel("Number of regions used")
                 plt.legend()
+                plt.savefig('../plots/Stability_MPI{}.png'.format(time, suffix), dpi=300)
+                plt.savefig('../plots/Stability_MPI{}.pdf'.format(time, suffix), dpi=300)
                 plt.show()
         else:
             print("")
@@ -261,9 +330,17 @@ if __name__ == '__main__':
     predicted_pathology = dm.predict_pathology(c_Grp=c)
     predicted_pathology_seeding_sn = dm.predict_pathology(c_Grp=c, seeding_region='iSN', suffix='_seedSN')
 
+    #Computing the Vulnerability heatmap
+    #dm.vulnerability_heatmap(Drop_Seed=False)
+
     #Compare model-based prediction with observed data to extrapolate region vulnerability
     dm.compute_vulnerability(Xt_Grp=predicted_pathology, c_Grp=c)
 
     #Stability of the model
     nb_region = 58
-    dm.compute_stability(graph=True)
+    a = dm.compute_stability(graph=False)
+
+    # list = []
+    # for i in range(0, len(a["MPI1"].values)):
+    #     futur_m = test[i:i + 5].mean()
+    #     list = list + [futur_m]

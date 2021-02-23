@@ -64,3 +64,4 @@ def stability(exp_data, connectivity_ipsi, connectivity_contra, nb_region, timep
     regions = pd.DataFrame(rep,columns=["Number Regions"])
     model_stability = pd.concat([regions, r_stab_df], axis=1)
     return model_stability
+
