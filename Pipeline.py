@@ -41,7 +41,8 @@ class DataManager(object):
 
         self.l_out = None
 
-        self.grp_mean = process_files.mean_pathology(timepoints=timepoints, path_data=self.path_data)
+        self.grp_mean = process_files.mean_pathology(timepoints=timepoints, path_data=self.path_data, individual=False)
+        self.ind_grp = process_files.mean_pathology(timepoints=timepoints, path_data=self.path_data, individual=True)
 
         self.c_rng = np.linspace(start=0.01, stop=10, num=100)
 
@@ -287,24 +288,54 @@ class DataManager(object):
             plt.show()
 
 
-    def compute_stability(self, graph=False, suffix=''):
+    def compute_stability(self, graph=False, Sliding_Window=None, suffix=''):
         stability = Model_Stability.stability(exp_data=exp_data, connectivity_ipsi=self.connectivity_ipsi,
                                               connectivity_contra=self.connectivity_contra,
                                               nb_region=nb_region, timepoints=timepoints, c_rng=self.c_rng)
         if graph == True:
-            for idx, time in enumerate(timepoints):
-                sns.scatterplot(stability["Number Regions"], stability["MPI{}".format(time)])
-                plt.hlines(y=r[idx], xmin=0, xmax=nb_region, color="red", label="Best r fit")
-                plt.title("Stability of the model, MPI{}".format(time))
-                plt.ylabel("Fit(r)")
-                plt.xlabel("Number of regions used")
-                plt.legend()
-                plt.savefig('../plots/Stability_MPI{}.png'.format(time, suffix), dpi=300)
-                plt.savefig('../plots/Stability_MPI{}.pdf'.format(time, suffix), dpi=300)
-                plt.show()
+            if Sliding_Window == None:
+                for idx, time in enumerate(timepoints):
+                    sns.scatterplot(stability["Number Regions"], stability["MPI{}".format(time)])
+                    plt.hlines(y=r[idx], xmin=0, xmax=nb_region, color="red", label="Best r fit")
+                    plt.title("Stability of the model, MPI{}".format(time))
+                    plt.ylabel("Fit(r)")
+                    plt.xlabel("Number of regions used")
+                    plt.legend()
+                    plt.savefig('../plots/Stability_MPI{}.png'.format(time, suffix), dpi=300)
+                    plt.savefig('../plots/Stability_MPI{}.pdf'.format(time, suffix), dpi=300)
+                    plt.show()
+            else:
+                for idx, time in enumerate(timepoints):
+                    print("Computing Sliding Window Mean")
+                    for i in tqdm(range(3, Sliding_Window+1)):
+                        mean_stab = stability["MPI{}".format(time)].rolling(i).mean()
+                        plt.plot(stability["Number Regions"].values, mean_stab.values, 'o-')
+                        plt.hlines(y=r[idx], xmin=0, xmax=nb_region, color="red", label="Best r fit")
+                        plt.title("Stability of the model, MPI{}, Sliding Window Mean = {}".format(time, i))
+                        plt.ylabel("Sliding_Mean Fit(r)")
+                        plt.xlabel("Number of regions used")
+                        plt.xlim(xmin=0, xmax=nb_region)
+                        plt.ylim(ymin=0, ymax=1)
+                        plt.grid()
+                        plt.savefig("../sliding_data/{}_Mean_MPI{}_SW{}.png".format(suffix,time, i), dpi=300)
+                        plt.savefig("../sliding_data/{}_Mean_MPI{}_SW{}.pdf".format(suffix, time, i), dpi=300)
+                        plt.show()
+                    print("Computing Sliding Window SD")
+                    for i in tqdm(range(3, Sliding_Window+1)):
+                        std_stab = stability["MPI{}".format(time)].rolling(i).std()
+                        plt.plot(stability["Number Regions"].values, std_stab.values, 'o-')
+                        plt.title("Stability of the model, MPI{}, Sliding Window SD = {}".format(time, i))
+                        plt.ylabel("Sliding_SD Fit(r)")
+                        plt.xlabel("Number of regions used")
+                        plt.xlim(xmin=0, xmax=nb_region)
+                        plt.ylim(ymin=-0.05, ymax=0.275)
+                        plt.grid()
+                        plt.savefig("../sliding_data/{}_SD_MPI{}_SW{}.png".format(suffix,time, i), dpi=300)
+                        plt.savefig("../sliding_data/{}_SD_MPI{}_SW{}.pdf".format(suffix, time, i), dpi=300)
+                        plt.show()
+
         else:
             print("")
-        return stability
 
 if __name__ == '__main__':
 
@@ -338,9 +369,8 @@ if __name__ == '__main__':
 
     #Stability of the model
     nb_region = 58
-    a = dm.compute_stability(graph=False)
+    #dm.compute_stability(graph=True, Sliding_Window=6)
 
-    # list = []
-    # for i in range(0, len(a["MPI1"].values)):
-    #     futur_m = test[i:i + 5].mean()
-    #     list = list + [futur_m]
+
+
+

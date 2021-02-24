@@ -164,7 +164,7 @@ def process_gene_expression_data(expression, roi_names):
     return expression.loc[expression_ordered, :]  # Reordered Snca expression
 
 
-def mean_pathology(timepoints, path_data):
+def mean_pathology(timepoints, path_data, individual=False):
     """
     Process experimental data to return mean per group and per timepoint
     ---
@@ -174,21 +174,46 @@ def mean_pathology(timepoints, path_data):
     ---
     Outputs:
         grp_mean: Dataframe with mean pathology per group, timepoints and regions
+        or
+        ind_grp: Dataframe with pathology per animal
     """
 
+    if individual == False:
+        mice = []
+        for time in timepoints:  # Creation of a list of 3 panda dataframe. These 3 df correspond to the 3 tp
+            l = path_data[path_data['Time post-injection (months)'] == time][path_data['Conditions'] == 'NTG'][
+                path_data.columns[2::]]
+            l = l.reset_index(drop=True)
+            # Reset the index, drop = True is used to remove the old index as it is by default added as a column
+            mice.append(l)  # list of Dataframe
 
-    mice = []
-    for time in timepoints:  # Creation of a list of 3 panda dataframe. These 3 df correspond to the 3 tp
-        l = path_data[path_data['Time post-injection (months)'] == time][path_data['Conditions'] == 'NTG'][
-            path_data.columns[2::]]
-        l = l.reset_index(drop=True)
-        # Reset the index, drop = True is used to remove the old index as it is by default added as a column
-        mice.append(l)  # list of Dataframe
+        grp_mean = []
+        for i in np.arange(len(timepoints)):
+            grp_mean.append(mice[i].mean())  # Careful, now the mean are display as columns and not as rows anymore
+        grp_mean = pd.concat([grp_mean[i] for i in np.arange(len(timepoints))], axis=1)
+        grp_mean.columns = ["MPI {}".format(i) for i in timepoints]
 
-    grp_mean = []
-    for i in np.arange(len(timepoints)):
-        grp_mean.append(mice[i].mean())  # Careful, now the mean are display as columns and not as rows anymore
-    grp_mean = pd.concat([grp_mean[i] for i in np.arange(len(timepoints))], axis=1)
-    grp_mean.columns = ["MPI {}".format(i) for i in timepoints]
+        return grp_mean
+    elif individual == True:
+        print("Individual extraction of data")
+        mice = []
+        ind_grp = pd.DataFrame()
+        for idx, time in enumerate(timepoints):  # Creation of a list of 3 panda dataframe. These 3 df correspond to the 3 tp
+            l = path_data[path_data['Time post-injection (months)'] == time][path_data['Conditions'] == 'NTG'][
+                path_data.columns[2::]]
+            l = l.reset_index(drop=True)
+            multi_array = [["{}".format(time) for k in range(0, len(l))],
+                           ["{}".format(k + 1) for k in range(0, len(l))]]
+            tuples = list(zip(*multi_array))
+            multi_index = pd.MultiIndex.from_tuples(tuples, names=["MPI", "Mouse"])
+            l = l.set_index(multi_index)
+            #NEED TO TRANSPOSE KEEPING THE MULTIINDEX
+            mice.append(l)# list of Dataframe
+            ind_grp = pd.concat([ind_grp, mice[idx]], axis=1)
+        return ind_grp
+    else:
+        print("")
 
-    return grp_mean
+
+#NEED ind_grp to be multi index
+#Then  cfit need to be reimplemented here to call values of the multi index
