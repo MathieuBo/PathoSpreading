@@ -41,8 +41,7 @@ class DataManager(object):
 
         self.l_out = None
 
-        self.grp_mean = process_files.mean_pathology(timepoints=timepoints, path_data=self.path_data, individual=False)
-        self.ind_grp = process_files.mean_pathology(timepoints=timepoints, path_data=self.path_data, individual=True)
+        self.grp_mean = process_files.mean_pathology(timepoints=timepoints, path_data=self.path_data)
 
         self.c_rng = np.linspace(start=0.01, stop=10, num=100)
 
@@ -296,6 +295,7 @@ class DataManager(object):
             if Sliding_Window == None:
                 for idx, time in enumerate(timepoints):
                     sns.scatterplot(stability["Number Regions"], stability["MPI{}".format(time)])
+                    sns.regplot(stability["Number Regions"], stability["MPI{}".format(time)], order=2)
                     plt.hlines(y=r[idx], xmin=0, xmax=nb_region, color="red", label="Best r fit")
                     plt.title("Stability of the model, MPI{}".format(time))
                     plt.ylabel("Fit(r)")
@@ -307,7 +307,7 @@ class DataManager(object):
             else:
                 for idx, time in enumerate(timepoints):
                     print("Computing Sliding Window Mean")
-                    for i in tqdm(range(3, Sliding_Window+1)):
+                    for i in tqdm(range(2, Sliding_Window+1)):
                         mean_stab = stability["MPI{}".format(time)].rolling(i).mean()
                         plt.plot(stability["Number Regions"].values, mean_stab.values, 'o-')
                         plt.hlines(y=r[idx], xmin=0, xmax=nb_region, color="red", label="Best r fit")
@@ -321,7 +321,7 @@ class DataManager(object):
                         plt.savefig("../sliding_data/{}_Mean_MPI{}_SW{}.pdf".format(suffix, time, i), dpi=300)
                         plt.show()
                     print("Computing Sliding Window SD")
-                    for i in tqdm(range(3, Sliding_Window+1)):
+                    for i in tqdm(range(2, Sliding_Window+1)):
                         std_stab = stability["MPI{}".format(time)].rolling(i).std()
                         plt.plot(stability["Number Regions"].values, std_stab.values, 'o-')
                         plt.title("Stability of the model, MPI{}, Sliding Window SD = {}".format(time, i))
@@ -336,7 +336,7 @@ class DataManager(object):
 
         else:
             print("")
-
+        return stability
 if __name__ == '__main__':
 
     # DataFrame with header, pS129-alpha-syn quantified in each brain region
@@ -368,8 +368,8 @@ if __name__ == '__main__':
     dm.compute_vulnerability(Xt_Grp=predicted_pathology, c_Grp=c)
 
     #Stability of the model
-    nb_region = 58
-    #dm.compute_stability(graph=True, Sliding_Window=6)
+    nb_region = 57
+    #stab = dm.compute_stability(graph=True, Sliding_Window=6)
 
 
 
