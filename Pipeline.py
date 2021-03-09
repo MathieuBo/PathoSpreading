@@ -6,19 +6,18 @@ import matplotlib.pyplot as plt
 np.seterr(divide='ignore') #Hide Runtime warning regarding log(0) = -inf
 
 from tqdm import tqdm
-
 from scipy.stats import pearsonr, linregress, percentileofscore
 from statsmodels.stats.multitest import multipletests
 
 import process_files
 import Laplacian
 import fitfunctions
-import Model_Stability
+import Robustness_Stability
 
 
 class DataManager(object):
 
-    def __init__(self, exp_data, synuclein, timepoints, seed='iCPu'):
+    def __init__(self, exp_data, synuclein, timepoints, seed='iCPu', use_expression_values=None):
 
         self.seed = seed
 
@@ -45,15 +44,19 @@ class DataManager(object):
 
         self.c_rng = np.linspace(start=0.01, stop=10, num=100)
 
+        self.use_expression_values = use_expression_values
+
         print('Data Manager initialized\n')
 
-    def compute_graph(self, use_expression_values=False, expression_data=None):
+    def compute_graph(self):
 
-        if use_expression_values is False:
-            self.l_out = Laplacian.get_laplacian(adj_mat=self.W)
+        if self.use_expression_values:
 
+            self.l_out = Laplacian.get_laplacian(adj_mat=self.W, expression_data=self.synuclein)
+            print('Using a syn expression values')
         else:
-            self.l_out= Laplacian.get_laplacian(adj_mat=self.W, expression_data=self.synuclein)
+
+            self.l_out = Laplacian.get_laplacian(adj_mat=self.W)
 
         print('Graph computed - Laplacian matrix created\n')
 
@@ -68,106 +71,20 @@ class DataManager(object):
 
         return c_Grp, r
 
-    def model_robustness(self, best_c, best_r, RandomSeed=False, RandomAdja=False, RandomPath=False):
-    # Random Seed
-        if RandomSeed == True:
-            c_values = []
-            r_val = []
-            print("Loading of Random Seeding test:")
-            for region in tqdm(self.ROInames):
-                local_c, local_r_val = fitfunctions.c_fit(log_path=np.log10(self.grp_mean),
-                                   L_out=self.l_out,
-                                   tp=timepoints,
-                                   seed=region,
-                                   c_rng=self.c_rng,
-                                   roi_names=self.ROInames)
+    def find_c_r(self):
+        c_r_table = fitfunctions.extract_c_and_r(log_path=np.log10(self.grp_mean),
+                                        L_out=self.l_out,
+                                        tp=timepoints,
+                                        seed=self.seed,
+                                        c_rng=self.c_rng,
+                                        roi_names=self.ROInames)
+        return c_r_table
 
-                c_values.append(local_c)
-                r_val.append(local_r_val)
 
-            percentile = percentileofscore(c_values, best_c)
+    def model_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=False, RandomAdja=False, RandomPath=False, suffix=""):
+        Robustness_Stability.random_robustness(self, best_c=best_c, best_r=best_r, exp_data=exp_data, timepoints=timepoints,
+                                          RandomSeed=RandomSeed, RandomAdja=RandomAdja, RandomPath=RandomPath, suffix=suffix)
 
-            print('{r} seed is the {p}th percentile\n'.format(r=self.seed, p=percentile))
-            print("Plotting the CPu Fit versus Fits of random seed regions... ")
-            RndSeed = pd.DataFrame(r_val, columns=["MPI1", "MPI3", "MPI6"]) # should be same as grp.mean
-            sns.swarmplot(data=RndSeed, size=4, zorder=0)
-            for time in range(0,len(timepoints)):
-                plt.plot(time, best_r[time], "o", color="red", markersize=3)
-            plt.title("CPu seed VS random region seed")
-            plt.ylabel("Fit(r)")
-            plt.legend()
-            plt.savefig('../plots/Random_Seed.png', dpi=300)
-            plt.savefig('../plots/Random_Seed.pdf', dpi=300)
-            plt.show()
-        else:
-            print("Robustness- Random seeding ignored")
-    #Random Adjacency Matrix
-        if RandomAdja == True:
-            c_adj = []
-            r_adj = []
-            print("Loading of Random Shuffling test (Adjacency matrix):")
-            for i in tqdm(range(0, 150)):# Adding an input for the iteration?
-                np.random.shuffle(self.W.values) #CAREFUL => Does it modify W somewhere else outside the function?
-                random_Lap = Laplacian.get_laplacian(adj_mat=self.W, expression_data=None, return_in_degree=False)
-                c_rand, r_rand = fitfunctions.c_fit(log_path=np.log10(self.grp_mean),
-                                                    L_out=random_Lap,
-                                                    tp=timepoints,
-                                                    seed='iCPu',
-                                                    c_rng=self.c_rng,
-                                                    roi_names=self.ROInames)
-                c_adj.append(c_rand)
-                r_adj.append(r_rand)
-
-            percentile = percentileofscore(c_adj, best_c)
-
-            print('{r} seed is the {p}th percentile\n'.format(r='iCPu', p=percentile))
-            print("Plotting the adjacency matrix Fit versus Fits of random adjacency matrices... ")
-            RndAdj = pd.DataFrame(r_adj, columns=["MPI1", "MPI3", "MPI6"])
-            sns.swarmplot(data=RndAdj, size=4, zorder=0)
-            for time in range(0,len(timepoints)):
-                plt.plot(time, best_r[time], "o", color="red", markersize=3)
-            plt.title("Adjacency Fit VS random Adjacency shuffle fits")
-            plt.ylabel("Fit(r)")
-            plt.legend()
-            plt.savefig('../plots/Random_Adja.png', dpi=300)
-            plt.savefig('../plots/Random_Adja.pdf', dpi=300)
-            plt.show()
-        else:
-            print("Robustness- Random Shuffle of Adjacency matrix ignored")
-    # Random Pathology Mean Matrix
-        if RandomPath == True:
-            self.W, self.path_data, self.conn_names, self.ROInames = process_files.process_pathdata(
-                exp_data=exp_data,
-                connectivity_contra=self.connectivity_contra,
-                connectivity_ipsi=self.connectivity_ipsi) # To check; Reimporting path_data to make sure to have a version that did not get modified
-            c_path = []
-            r_path = []
-            print("Loading of Random Pathology Mean test:")
-            for i in tqdm(range(0, 150)):
-                grp_mean = process_files.mean_pathology(timepoints=timepoints, path_data=self.path_data)
-                for time in range(0, len(timepoints)):
-                    np.random.shuffle(grp_mean.values[:, time])  # Shuffling data of a same timepoint
-                Lap = Laplacian.get_laplacian(adj_mat=self.W, expression_data=None, return_in_degree=False)
-                c_rand, r_rand = fitfunctions.c_fit(log_path=np.log10(grp_mean), L_out=Lap, tp=timepoints, seed='iCPu',
-                                                    c_rng=self.c_rng,
-                                                    roi_names=self.ROInames)
-                c_path.append(c_rand)
-                r_path.append(r_rand)
-            percentile = percentileofscore(c_path, best_c)
-            print('{r} seed is the {p}th percentile\n'.format(r='iCPu', p=percentile))
-            print("Plotting the non-shuffled pathology Fit versus shuffled pathology fits ")
-            RndPath = pd.DataFrame(r_path, columns=["MPI1", "MPI3", "MPI6"])
-            sns.swarmplot(data=RndPath, size=4, zorder=0)
-            for time in range(0,len(timepoints)):
-                plt.plot(time, best_r[time], "o", color="red", markersize=3)
-            plt.title("Pathology mean/timepoint fit VS shuffled pathology mean/timepoints fits")
-            plt.ylabel("Fit(r)")
-            plt.legend()
-            plt.savefig('../plots/Random_Patho.png', dpi=300)
-            plt.savefig('../plots/Random_Patho.pdf', dpi=300)
-            plt.show()
-        else:
-            print("Robustness- Random Shuffle of Pathology Mean matrix ignored")
 
 
 
@@ -223,7 +140,7 @@ class DataManager(object):
 
         # Saving the lollipop plots
         for time in timepoints:
-            mpi = pd.read_csv('../output/model_output_MPI{}.csv'.format(time, suffix))
+            mpi = pd.read_csv('../output/model_output_MPI{}{}.csv'.format(time, suffix))
             mpi = mpi.rename(columns={'Unnamed: 0': 'region'})
             plt.figure()
             plt.vlines(mpi["ndm_data"], mpi['linreg_data'], mpi['linreg_data'] + mpi['residual'] - 0.04,
@@ -234,32 +151,32 @@ class DataManager(object):
             plt.ylabel("Log(Path)")
             plt.title("Month Post Injection {}".format(time))
             plt.legend()
-            plt.grid(color="grey")
 
-            plt.savefig('../plots/Predicted_VS_Path_MPI{}.png'.format(time, suffix), dpi=300) #Need to create the folder plots
-            plt.savefig('../plots/Predicted_VS_Path_MPI{}.pdf'.format(time, suffix), dpi=300) #Need to create the folder plots
+            plt.savefig('../plots/{}Predicted_VS_Path_MPI{}.png'.format(suffix, time), dpi=300)
+            plt.savefig('../plots/{}Predicted_VS_Path_MPI{}.pdf'.format(suffix, time), dpi=300)
 
             plt.show()
         # Saving the density Vs Residual plots
         plt.figure()
         for time in timepoints:
-            mpi = pd.read_csv('../output/model_output_MPI{}.csv'.format(time, suffix))
+            mpi = pd.read_csv('../output/model_output_MPI{}{}.csv'.format(time, suffix))
             mpi = mpi.rename(columns={'Unnamed: 0': 'region'})
             sns.kdeplot(x='residual', data=mpi, label='{} MPI'.format(time))
             plt.title("Density(residual)")
             plt.legend(title='Timepoints')
-        plt.savefig('../plots/density_VS_residual.png', dpi=300)
-        plt.savefig('../plots/density_VS_residual.pdf', dpi=300)
+        plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}.png'.format(suffix), dpi=300)
+        plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}.png'.format(suffix), dpi=300)
         plt.show()
 
         stats_df = pd.DataFrame(stats_df)
         # Boneferroni method for correction of pvalues
         _, stats_df['adj_p_value'], _, _ = multipletests(stats_df['p_value'], method="bonferroni")
 
-        stats_df.to_csv('../output/stats.csv')
+        stats_df.to_csv('../output/stats{}.csv'.format(suffix))
 
-    def vulnerability_heatmap(self, Drop_Seed=False):
-        patho = pd.read_csv('../output/predicted_pathology.csv')
+    def predicted_heatmap(self, Drop_Seed=False, suffix=""):
+        patho = pd.read_csv('../output/predicted_pathology{}.csv'.format(suffix))
+
         if Drop_Seed == False:
             plt.figure(figsize=(10, 25))
             norm_path = patho[['MPI1', 'MPI3', 'MPI6']].values
@@ -269,11 +186,12 @@ class DataManager(object):
             plt.xticks(np.arange(patho.columns[1:4].shape[0]), patho.columns[1:4])
             plt.title("Vulnerability")
             plt.colorbar()
-            plt.savefig("../plots/Vulnerability_CPu_included.png", dpi =300)
-            plt.savefig("../plots/Vulnerability_CPu_included.pdf", dpi=300)
+            plt.savefig("../plots/Heatmap_Predictions/Predictions_SN_included{}.png".format(suffix), dpi =300)
+            plt.savefig("../plots/Heatmap_Predictions/Predictions_SN_included{}.pdf".format(suffix), dpi=300)
             plt.show()
         else:
-            patho= patho.drop(15)
+            patho = patho.drop(15) #CPu
+            patho= patho.drop(48) #iSN
             plt.figure(figsize=(10, 25))
             norm_path = patho[['MPI1', 'MPI3', 'MPI6']].values
             norm_path = (norm_path - np.min(norm_path)) / (np.max(norm_path) - np.min(norm_path))
@@ -282,13 +200,13 @@ class DataManager(object):
             plt.xticks(np.arange(patho.columns[1:4].shape[0]), patho.columns[1:4])
             plt.title("Vulnerability - CPu excluded")
             plt.colorbar()
-            plt.savefig("../plots/Vulnerability_CPu_excluded.pdf", dpi=300)
-            plt.savefig("../plots/Vulnerability_CPu_excluded.png", dpi=300)
+            plt.savefig("../plots/Heatmap_Predictions/Predictions_SN_excluded{}.pdf".format(suffix), dpi=300)
+            plt.savefig("../plots/Heatmap_Predictions/Predictions_SN_excluded{}.png".format(suffix), dpi=300)
             plt.show()
-
+        return patho
 
     def compute_stability(self, graph=False, Sliding_Window=None, suffix=''):
-        stability = Model_Stability.stability(exp_data=exp_data, connectivity_ipsi=self.connectivity_ipsi,
+        stability = Robustness_Stability.stability(exp_data=exp_data, connectivity_ipsi=self.connectivity_ipsi,
                                               connectivity_contra=self.connectivity_contra,
                                               nb_region=nb_region, timepoints=timepoints, c_rng=self.c_rng)
         if graph == True:
@@ -301,15 +219,17 @@ class DataManager(object):
                     plt.ylabel("Fit(r)")
                     plt.xlabel("Number of regions used")
                     plt.legend()
-                    plt.savefig('../plots/Stability_MPI{}.png'.format(time, suffix), dpi=300)
-                    plt.savefig('../plots/Stability_MPI{}.pdf'.format(time, suffix), dpi=300)
+                    plt.savefig('../plots/Stab_Grp/{}Stability_MPI{}.png'.format(suffix, time), dpi=300)
+                    plt.savefig('../plots/Stab_Grp/{}Stability_MPI{}.pdf'.format(suffix, time), dpi=300)
                     plt.show()
             else:
                 for idx, time in enumerate(timepoints):
                     print("Computing Sliding Window Mean")
                     for i in tqdm(range(2, Sliding_Window+1)):
                         mean_stab = stability["MPI{}".format(time)].rolling(i).mean()
-                        plt.plot(stability["Number Regions"].values, mean_stab.values, 'o-')
+                        #plt.plot(stability["Number Regions"].values, mean_stab.values, 'o-')
+                        sns.scatterplot(stability["Number Regions"], mean_stab.values)
+                        sns.regplot(stability["Number Regions"], mean_stab.values, order=2)
                         plt.hlines(y=r[idx], xmin=0, xmax=nb_region, color="red", label="Best r fit")
                         plt.title("Stability of the model, MPI{}, Sliding Window Mean = {}".format(time, i))
                         plt.ylabel("Sliding_Mean Fit(r)")
@@ -317,60 +237,88 @@ class DataManager(object):
                         plt.xlim(xmin=0, xmax=nb_region)
                         plt.ylim(ymin=0, ymax=1)
                         plt.grid()
-                        plt.savefig("../sliding_data/{}_Mean_MPI{}_SW{}.png".format(suffix,time, i), dpi=300)
-                        plt.savefig("../sliding_data/{}_Mean_MPI{}_SW{}.pdf".format(suffix, time, i), dpi=300)
+                        plt.savefig("../plots/Stab_Grp_Sliding/{}Mean_MPI{}_SW{}.png".format(suffix,time, i), dpi=300)
+                        plt.savefig("../plots/Stab_Grp_Sliding/{}Mean_MPI{}_SW{}.pdf".format(suffix, time, i), dpi=300)
                         plt.show()
                     print("Computing Sliding Window SD")
                     for i in tqdm(range(2, Sliding_Window+1)):
                         std_stab = stability["MPI{}".format(time)].rolling(i).std()
-                        plt.plot(stability["Number Regions"].values, std_stab.values, 'o-')
+                        #plt.plot(stability["Number Regions"].values, std_stab.values, 'o-')
+                        sns.scatterplot(stability["Number Regions"].values, std_stab.values)
+                        sns.regplot(stability["Number Regions"].values, std_stab.values, order=2)
                         plt.title("Stability of the model, MPI{}, Sliding Window SD = {}".format(time, i))
                         plt.ylabel("Sliding_SD Fit(r)")
                         plt.xlabel("Number of regions used")
                         plt.xlim(xmin=0, xmax=nb_region)
                         plt.ylim(ymin=-0.05, ymax=0.275)
                         plt.grid()
-                        plt.savefig("../sliding_data/{}_SD_MPI{}_SW{}.png".format(suffix,time, i), dpi=300)
-                        plt.savefig("../sliding_data/{}_SD_MPI{}_SW{}.pdf".format(suffix, time, i), dpi=300)
+                        plt.savefig("../plots/Stab_Grp_Sliding/{}SD_MPI{}_SW{}.png".format(suffix,time, i), dpi=300)
+                        plt.savefig("../plots/Stab_Grp_Sliding/{}SD_MPI{}_SW{}.pdf".format(suffix, time, i), dpi=300)
                         plt.show()
 
         else:
             print("")
         return stability
+
+    def compute_individual_stability(self, exp_data, nb_region):
+        ind_table = Robustness_Stability.stability_individual(exp_data=exp_data,
+                                             connectivity_ipsi=dm.connectivity_ipsi,
+                                             connectivity_contra=dm.connectivity_contra, nb_region=nb_region,
+                                             timepoints=timepoints,
+                                             c_rng=dm.c_rng)
+        return ind_table
+
 if __name__ == '__main__':
 
     # DataFrame with header, pS129-alpha-syn quantified in each brain region
     exp_data = pd.read_csv("./Data83018/data.csv", header=0)
 
-    synuclein = pd.read_csv("./Data83018/SncaExpression.csv", index_col=0, header=None)
+    synuclein = pd.read_csv("./Data83018/SncaExpression.csv", index_col=0, header=None) # Gene Expression ==> Generalization
 
     timepoints = [1, 3, 6]
 
-    #Load data and computation Laplacian matrices
-    dm = DataManager(exp_data=exp_data, synuclein=synuclein, timepoints=timepoints, seed='iCPu')
-    dm.compute_graph()
+    # Load data and computation Laplacian matrices
+    dm = DataManager(exp_data=exp_data,
+                     synuclein=synuclein,
+                     timepoints=timepoints,
+                     seed='iCPU',
+                     use_expression_values=None)
+    dm.compute_graph() # Returns different l_out
+                       # Need to consider the gene expression
 
-    #Use experimental data to fit the model and find the best c (scaling parameter) and best r
+    #### First checking dm
+    #### Second checking next
+
+    # Use experimental data to fit the model and find the best c (scaling parameter) and best r
+
     c, r = dm.find_best_c()
+    #c_r_table = dm.find_c_r()
 
-    #Test robustness of the model by comparing c values for fit in other brain regions
-    #dm.model_robustness(best_c=c, best_r=r, RandomSeed=True, RandomAdja=True, RandomPath=True)
-    # If all True takes 20-25 min to run the code
+    # Controls to test the robustness of the model - If ALL TRUE then takes 25 min to run the code
+    #dm.model_robustness(best_c=c, best_r=r, exp_data=exp_data, timepoints=timepoints,
+    #                    RandomSeed=False, RandomAdja=False, RandomPath=False, suffix='')
 
-    #Predict pathology
-    predicted_pathology = dm.predict_pathology(c_Grp=c)
-    predicted_pathology_seeding_sn = dm.predict_pathology(c_Grp=c, seeding_region='iSN', suffix='_seedSN')
+    # Predict pathology
+    #predicted_pathology = dm.predict_pathology(c_Grp=c)
+    #predicted_pathology_seeding_sn = dm.predict_pathology(c_Grp=c, seeding_region='iSN', suffix='_seedSN')
+    #predicted_pathology_SCNA = dm.predict_pathology(c_Grp=c, suffix='_SNCA') #SCNA
 
-    #Computing the Vulnerability heatmap
-    #dm.vulnerability_heatmap(Drop_Seed=False)
+    # Computing the Vulnerability heatmap
+    #dm.predicted_heatmap(Drop_Seed=True)
+    #patho=dm.predicted_heatmap(Drop_Seed=True, suffix="_seedSN")
+    #dm.predicted_heatmap(Drop_Seed=True, suffix="_SNCA")
 
-    #Compare model-based prediction with observed data to extrapolate region vulnerability
-    dm.compute_vulnerability(Xt_Grp=predicted_pathology, c_Grp=c)
+    # Compare model-based prediction with observed data to extrapolate region vulnerability
+    #dm.compute_vulnerability(Xt_Grp=predicted_pathology, c_Grp=c)
+    #dm.compute_vulnerability(Xt_Grp=predicted_pathology_seeding_sn, c_Grp=c, suffix='_seedSN')
+    #dm.compute_vulnerability(Xt_Grp=predicted_pathology_SNCA, c_Grp=c, suffix='_SNCA')
 
-    #Stability of the model
+
+    # Stability of the model --> All animals included
     nb_region = 57
     #stab = dm.compute_stability(graph=True, Sliding_Window=6)
+    #stab = dm.compute_stability(graph=True, Sliding_Window=None, suffix="Seed_SN_")
+    #stab = dm.compute_stability(graph=True, Sliding_Window=None, suffix="Snca_")
 
-
-
-
+    # Stability of the model --> Individuals
+    #ind_table = dm.compute_individual_stability(exp_data=exp_data, nb_region=58)

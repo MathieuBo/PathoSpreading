@@ -78,6 +78,45 @@ def c_fit(log_path, L_out, tp, seed, c_rng, roi_names):
 
     return c_Grp, reg
 
+def extract_c_and_r(log_path, L_out, tp, seed, c_rng, roi_names):
+    """
+    Extract each c and r values corresponding while iterating on c.
+    ---
+    Inputs:
+    log_path --> log10 of grp_mean. Grp_mean is the Dataframe with mean pathology per group, timepoints and regions
+    L_out --> Laplacian matrice, array
+    tp --> Timepoint, list
+    c_rng --> Constant to tune the time scale
+    roi_names --> ROInames
+    ---
+    Outputs:
+    extracted --> Panda DataFrame with Multi-indexed columns. Contains for each timepoint c values and corresponding
+    r values
+    """
+    Xo = make_Xo(seed, roi_names)
+    # Exclusion mask; we do not count the regions with 0 path
+    mask = log_path != -np.inf
+    # Compute fit at each time point for range of time
+    multi = []
+    for time in tp:
+        for output in ["c", "r"]:
+            multi.append((str(time), output))
+
+    col = pd.MultiIndex.from_tuples(multi, names=["MPI", "Condition"])
+    c_idx = [i for i in range(0,len(c_rng))]
+    extracted = pd.DataFrame(0, index=c_idx, columns=col)
+    for time in range(0, len(tp)):
+
+        for c_idx, c_value in enumerate(c_rng):
+            exp_val = log_path.iloc[:, time][mask.iloc[:, time]].values
+
+            predict_val = np.log10(predict_Lout(L_out, Xo, c_value, t=tp[time])[mask.iloc[:, time]])
+
+            r, _ = stats.pearsonr(exp_val, predict_val)
+            extracted[str(tp[time]), "c"].loc[c_idx] =+ c_value
+            extracted[str(tp[time]), "r"].loc[c_idx] =+ r
+    return extracted
+
 def c_fit_individual(ind_patho, L_out, tp, seed, c_rng, roi_names):
     """
     Iterates the c-values to extract subsequent predicted magnitude Xt and compare them to
@@ -97,7 +136,6 @@ def c_fit_individual(ind_patho, L_out, tp, seed, c_rng, roi_names):
     c_fit_ani --> Panda Dataframe. Rows = 2 {c_fit, r} and Columns = Number of animals used
     """
     Xo = make_Xo(seed, roi_names)
-    #Xt_sweep = np.zeros((len(c_rng), len(tp)))
     # Exclusion mask; we do not count the regions with 0 path
     log_path = np.log10(ind_patho)
     mask = log_path != -np.inf

@@ -5,9 +5,9 @@ import numpy as np
 
 tp = [1,3,6]
 #Loading
-data = pd.read_csv('../output/predicted_pathology.csv', index_col=4)
+data = pd.read_csv('../../output/predicted_pathology.csv', index_col=4)
 data = data.drop(['Unnamed: 0'], axis=1)
-brainR = pd.read_csv('./Data83018/BrainR_ROInames.csv', sep=",", usecols=['BrainR', 'ROInames', 'Side'])
+brainR = pd.read_csv('../Data83018/BrainR_ROInames.csv', sep=",", usecols=['BrainR', 'ROInames', 'Side'])
 cmap = plt.get_cmap('Reds')
 
 
