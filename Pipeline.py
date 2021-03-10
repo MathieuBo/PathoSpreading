@@ -2,12 +2,12 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-
-np.seterr(divide='ignore') #Hide Runtime warning regarding log(0) = -inf
-
+import os
 from tqdm import tqdm
-from scipy.stats import pearsonr, linregress, percentileofscore
+from scipy.stats import pearsonr, linregress
 from statsmodels.stats.multitest import multipletests
+
+np.seterr(divide='ignore')  # Hide Runtime warning regarding log(0) = -inf
 
 import process_files
 import Laplacian
@@ -16,8 +16,8 @@ import Robustness_Stability
 
 
 class DataManager(object):
-
-    def __init__(self, exp_data, synuclein, timepoints, seed='iCPu', use_expression_values=None):
+    # Initialization
+    def __init__(self, exp_data, synuclein, timepoints, seed, use_expression_values=None):
 
         self.seed = seed
 
@@ -27,12 +27,8 @@ class DataManager(object):
         self.connectivity_contra = pd.read_csv("./Data83018/connectivity_contra.csv", index_col=0)
 
         self.W, self.path_data, self.conn_names, self.ROInames = process_files.process_pathdata(exp_data=exp_data,
-                                                                                                   connectivity_contra=self.connectivity_contra,
-                                                                                                   connectivity_ipsi=self.connectivity_ipsi)
-
-        self.coor = pd.read_csv("./Data83018/ROIcoords.csv")
-
-        self.coor_ordered = process_files.process_roi_coord(coor=self.coor, roi_names=self.ROInames)
+                                                                                                connectivity_contra=self.connectivity_contra,
+                                                                                                connectivity_ipsi=self.connectivity_ipsi)
 
         self.synuclein = process_files.process_gene_expression_data(expression=synuclein, roi_names=self.ROInames)
 
@@ -48,12 +44,14 @@ class DataManager(object):
 
         print('Data Manager initialized\n')
 
+    # Main Functions
     def compute_graph(self):
 
         if self.use_expression_values:
 
             self.l_out = Laplacian.get_laplacian(adj_mat=self.W, expression_data=self.synuclein)
             print('Using a syn expression values')
+
         else:
 
             self.l_out = Laplacian.get_laplacian(adj_mat=self.W)
@@ -63,37 +61,26 @@ class DataManager(object):
     def find_best_c(self):
 
         c_Grp, r = fitfunctions.c_fit(log_path=np.log10(self.grp_mean),
-                                        L_out=self.l_out,
-                                        tp=timepoints,
-                                        seed=self.seed,
-                                        c_rng=self.c_rng,
-                                        roi_names=self.ROInames)
+                                      L_out=self.l_out,
+                                      tp=timepoints,
+                                      seed=self.seed,
+                                      c_rng=self.c_rng,
+                                      roi_names=self.ROInames)
 
         return c_Grp, r
 
-    def find_c_r(self):
-        c_r_table = fitfunctions.extract_c_and_r(log_path=np.log10(self.grp_mean),
-                                        L_out=self.l_out,
-                                        tp=timepoints,
-                                        seed=self.seed,
-                                        c_rng=self.c_rng,
-                                        roi_names=self.ROInames)
-        return c_r_table
+    def predict_pathology(self, c_Grp):
 
-
-    def model_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=False, RandomAdja=False, RandomPath=False, suffix=""):
-        Robustness_Stability.random_robustness(self, best_c=best_c, best_r=best_r, exp_data=exp_data, timepoints=timepoints,
-                                          RandomSeed=RandomSeed, RandomAdja=RandomAdja, RandomPath=RandomPath, suffix=suffix)
-
-
-
-
-    def predict_pathology(self, c_Grp, seeding_region=None, suffix=''):
-
-        if seeding_region is None:
-            Xo = fitfunctions.make_Xo(ROI=self.seed, ROInames=self.ROInames)
+        # Initialization
+        if self.use_expression_values:
+            gene_exp = '_SNCA'
+            suffix = "_{}{}".format(self.seed, gene_exp)
         else:
-            Xo = fitfunctions.make_Xo(ROI=seeding_region, ROInames=self.ROInames)
+            suffix = "_{}".format(self.seed)
+
+        Xo = fitfunctions.make_Xo(ROI=self.seed, ROInames=self.ROInames)
+
+        print("suffix is ", suffix)
 
         Xt_Grp = [fitfunctions.predict_Lout(self.l_out, Xo, c_Grp, i) for i in timepoints]
 
@@ -103,13 +90,22 @@ class DataManager(object):
 
         return Xt_Grp
 
-    def compute_vulnerability(self, Xt_Grp, c_Grp, suffix=''):
+    def compute_outputs_and_graphs(self, Xt_Grp):
 
-        vulnerability = pd.DataFrame(0, columns=["MPI 1", "MPI 3", "MPI 6"], index=self.grp_mean.index)
+        # Initialization
+        if self.use_expression_values:
+            gene_exp = '_SNCA'
+            suffix = "_{}{}".format(self.seed, gene_exp)
+        else:
+            suffix = "_{}".format(self.seed)
+        try:
+            os.mkdir('../plots/Density_vs_residuals/')
+        except WindowsError:  # For Mac users need to replace by OSError.
+            print("")
 
         stats_df = []
         masks = dict()
-        for M in range(0, len(timepoints)): # M iterates according to the number of timepoint
+        for M in range(0, len(timepoints)):
             Df = pd.DataFrame({"experimental_data": np.log10(self.grp_mean.iloc[:, M]).values,
                                "ndm_data": np.log10(Xt_Grp[M])},
                               index=self.grp_mean.index)  # Runtime Warning
@@ -125,12 +121,12 @@ class DataManager(object):
 
             stats_df.append(cor)
 
-            print('----------------------------')
+            print('---------------------------------------------------')
             print("Month Post Injection %s" % timepoints[M])
             print("Number of Regions used: ", Df.shape[0])
             print("Pearson correlation coefficient", cor['Pearson r'])
             print('Pvalue (non corrected)', cor['p_value'])
-            print('----------------------------\n')
+            print('---------------------------------------------------\n')
 
             slope, intercept, r_value, p_value, std_err = linregress(x=Df['ndm_data'], y=Df['experimental_data'])
             Df['linreg_data'] = slope * Df['ndm_data'] + intercept
@@ -145,15 +141,15 @@ class DataManager(object):
             plt.figure()
             plt.vlines(mpi["ndm_data"], mpi['linreg_data'], mpi['linreg_data'] + mpi['residual'] - 0.04,
                        lw=0.8, color='blue', linestyles="dotted", label="Residual")
-            sns.regplot(mpi["ndm_data"], mpi["experimental_data"], data=mpi,
+            sns.regplot(x=mpi["ndm_data"], y=mpi["experimental_data"], data=mpi,
                         scatter_kws={'s': 40, 'facecolor': 'blue'})
             plt.xlabel("Log(Predicted)")
             plt.ylabel("Log(Path)")
-            plt.title("Month Post Injection {}".format(time))
+            plt.title("Month Post Injection {} - Conditions{}".format(time, suffix))
             plt.legend()
 
-            plt.savefig('../plots/{}Predicted_VS_Path_MPI{}.png'.format(suffix, time), dpi=300)
-            plt.savefig('../plots/{}Predicted_VS_Path_MPI{}.pdf'.format(suffix, time), dpi=300)
+            plt.savefig('../plots/Predicted_VS_Path_MPI{}{}.png'.format(time, suffix), dpi=300)
+            plt.savefig('../plots/Predicted_VS_Path_MPI{}{}.pdf'.format(time, suffix), dpi=300)
 
             plt.show()
         # Saving the density Vs Residual plots
@@ -162,8 +158,9 @@ class DataManager(object):
             mpi = pd.read_csv('../output/model_output_MPI{}{}.csv'.format(time, suffix))
             mpi = mpi.rename(columns={'Unnamed: 0': 'region'})
             sns.kdeplot(x='residual', data=mpi, label='{} MPI'.format(time))
-            plt.title("Density(residual)")
+            plt.title("Density(residual) - Conditions{}".format(suffix))
             plt.legend(title='Timepoints')
+
         plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}.png'.format(suffix), dpi=300)
         plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}.png'.format(suffix), dpi=300)
         plt.show()
@@ -174,7 +171,19 @@ class DataManager(object):
 
         stats_df.to_csv('../output/stats{}.csv'.format(suffix))
 
-    def predicted_heatmap(self, Drop_Seed=False, suffix=""):
+    def predicted_heatmap(self, Drop_Seed=False):
+
+        # Initialization
+        if self.use_expression_values:
+            gene_exp = '_SNCA'
+            suffix = "_{}{}".format(self.seed, gene_exp)
+        else:
+            suffix = "_{}".format(self.seed)
+        try:
+            os.mkdir('../plots/Heatmap_Predictions/')
+        except WindowsError:  # For Mac users need to replace by OSError.
+            print("")
+
         patho = pd.read_csv('../output/predicted_pathology{}.csv'.format(suffix))
 
         if Drop_Seed == False:
@@ -184,141 +193,186 @@ class DataManager(object):
             plt.imshow(norm_path, cmap='BuPu', aspect=.1)
             plt.yticks(np.arange(patho.shape[0]), patho['regions'])
             plt.xticks(np.arange(patho.columns[1:4].shape[0]), patho.columns[1:4])
-            plt.title("Vulnerability")
+            plt.title("Predictions(MPI) - Conditions{}".format(suffix))
             plt.colorbar()
-            plt.savefig("../plots/Heatmap_Predictions/Predictions_SN_included{}.png".format(suffix), dpi =300)
-            plt.savefig("../plots/Heatmap_Predictions/Predictions_SN_included{}.pdf".format(suffix), dpi=300)
+            plt.savefig("../plots/Heatmap_Predictions/Predictions_{}.png".format(suffix), dpi=300)
+            plt.savefig("../plots/Heatmap_Predictions/Predictions_{}.pdf".format(suffix), dpi=300)
             plt.show()
         else:
-            patho = patho.drop(15) #CPu
-            patho= patho.drop(48) #iSN
+            for i in patho.index:
+                if patho.loc[i, "regions"] == self.seed:
+                    patho = patho.drop(i)
+                    print(self.seed, "dropped.")
             plt.figure(figsize=(10, 25))
             norm_path = patho[['MPI1', 'MPI3', 'MPI6']].values
             norm_path = (norm_path - np.min(norm_path)) / (np.max(norm_path) - np.min(norm_path))
             plt.imshow(norm_path, cmap='BuPu', aspect=.1)
             plt.yticks(np.arange(patho.shape[0]), patho['regions'])
             plt.xticks(np.arange(patho.columns[1:4].shape[0]), patho.columns[1:4])
-            plt.title("Vulnerability - CPu excluded")
+            plt.title("Predictions(MPI) - Conditions{} - {} excluded".format(suffix, self.seed))
             plt.colorbar()
-            plt.savefig("../plots/Heatmap_Predictions/Predictions_SN_excluded{}.pdf".format(suffix), dpi=300)
-            plt.savefig("../plots/Heatmap_Predictions/Predictions_SN_excluded{}.png".format(suffix), dpi=300)
+            plt.savefig("../plots/Heatmap_Predictions/Predictions_{}_excluded{}.pdf".format(suffix, self.seed), dpi=300)
+            plt.savefig("../plots/Heatmap_Predictions/Predictions_{}_excluded{}.png".format(suffix, self.seed), dpi=300)
             plt.show()
         return patho
 
-    def compute_stability(self, graph=False, Sliding_Window=None, suffix=''):
-        stability = Robustness_Stability.stability(exp_data=exp_data, connectivity_ipsi=self.connectivity_ipsi,
-                                              connectivity_contra=self.connectivity_contra,
-                                              nb_region=nb_region, timepoints=timepoints, c_rng=self.c_rng)
-        if graph == True:
-            if Sliding_Window == None:
-                for idx, time in enumerate(timepoints):
-                    sns.scatterplot(stability["Number Regions"], stability["MPI{}".format(time)])
-                    sns.regplot(stability["Number Regions"], stability["MPI{}".format(time)], order=2)
-                    plt.hlines(y=r[idx], xmin=0, xmax=nb_region, color="red", label="Best r fit")
-                    plt.title("Stability of the model, MPI{}".format(time))
-                    plt.ylabel("Fit(r)")
-                    plt.xlabel("Number of regions used")
-                    plt.legend()
-                    plt.savefig('../plots/Stab_Grp/{}Stability_MPI{}.png'.format(suffix, time), dpi=300)
-                    plt.savefig('../plots/Stab_Grp/{}Stability_MPI{}.pdf'.format(suffix, time), dpi=300)
-                    plt.show()
-            else:
-                for idx, time in enumerate(timepoints):
-                    print("Computing Sliding Window Mean")
-                    for i in tqdm(range(2, Sliding_Window+1)):
-                        mean_stab = stability["MPI{}".format(time)].rolling(i).mean()
-                        #plt.plot(stability["Number Regions"].values, mean_stab.values, 'o-')
-                        sns.scatterplot(stability["Number Regions"], mean_stab.values)
-                        sns.regplot(stability["Number Regions"], mean_stab.values, order=2)
-                        plt.hlines(y=r[idx], xmin=0, xmax=nb_region, color="red", label="Best r fit")
-                        plt.title("Stability of the model, MPI{}, Sliding Window Mean = {}".format(time, i))
-                        plt.ylabel("Sliding_Mean Fit(r)")
-                        plt.xlabel("Number of regions used")
-                        plt.xlim(xmin=0, xmax=nb_region)
-                        plt.ylim(ymin=0, ymax=1)
-                        plt.grid()
-                        plt.savefig("../plots/Stab_Grp_Sliding/{}Mean_MPI{}_SW{}.png".format(suffix,time, i), dpi=300)
-                        plt.savefig("../plots/Stab_Grp_Sliding/{}Mean_MPI{}_SW{}.pdf".format(suffix, time, i), dpi=300)
-                        plt.show()
-                    print("Computing Sliding Window SD")
-                    for i in tqdm(range(2, Sliding_Window+1)):
-                        std_stab = stability["MPI{}".format(time)].rolling(i).std()
-                        #plt.plot(stability["Number Regions"].values, std_stab.values, 'o-')
-                        sns.scatterplot(stability["Number Regions"].values, std_stab.values)
-                        sns.regplot(stability["Number Regions"].values, std_stab.values, order=2)
-                        plt.title("Stability of the model, MPI{}, Sliding Window SD = {}".format(time, i))
-                        plt.ylabel("Sliding_SD Fit(r)")
-                        plt.xlabel("Number of regions used")
-                        plt.xlim(xmin=0, xmax=nb_region)
-                        plt.ylim(ymin=-0.05, ymax=0.275)
-                        plt.grid()
-                        plt.savefig("../plots/Stab_Grp_Sliding/{}SD_MPI{}_SW{}.png".format(suffix,time, i), dpi=300)
-                        plt.savefig("../plots/Stab_Grp_Sliding/{}SD_MPI{}_SW{}.pdf".format(suffix, time, i), dpi=300)
-                        plt.show()
-
+    def plotting_r_function_of_c(self):
+        # Initialization
+        if self.use_expression_values:
+            gene_exp = '_SNCA'
+            suffix = "_{}{}".format(self.seed, gene_exp)
         else:
+            suffix = "_{}".format(self.seed)
+        try:
+            os.mkdir('../plots/Fits(c)/')
+        except WindowsError:  # For Mac users need to replace by OSError.
             print("")
-        return stability
 
-    def compute_individual_stability(self, exp_data, nb_region):
-        ind_table = Robustness_Stability.stability_individual(exp_data=exp_data,
-                                             connectivity_ipsi=dm.connectivity_ipsi,
-                                             connectivity_contra=dm.connectivity_contra, nb_region=nb_region,
-                                             timepoints=timepoints,
-                                             c_rng=dm.c_rng)
-        return ind_table
+        c_r_table = fitfunctions.extract_c_and_r(log_path=np.log10(self.grp_mean),
+                                                 L_out=self.l_out,
+                                                 tp=timepoints,
+                                                 seed=self.seed,
+                                                 c_rng=self.c_rng,
+                                                 roi_names=self.ROInames)
+        for t in timepoints:
+            plt.figure()
+            sns.scatterplot(x=c_r_table[str(t), "c"], y=c_r_table[str(t), "r"])
+            plt.xlabel('c')
+            plt.ylabel('Best Fit(r)')
+            plt.title('MPI {} - Conditions{}'.format(t, suffix))
+            plt.savefig('../plots/Fits(c)/plot_r_(c)_MPI{}{}.png'.format(t, suffix), dpi=300)
+            plt.show()
+
+    # Controls
+
+    def model_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=False,
+                         RandomAdja=False, RandomPath=False):
+        if self.use_expression_values:
+            gene_exp = '_SNCA'
+            suffix = "_{}{}".format(self.seed, gene_exp)
+        else:
+            suffix = "_{}".format(self.seed)
+
+        try:
+            os.mkdir('../plots/Model_Robustness/')
+        except WindowsError:  # For Mac users need to replace by OSError.
+            print("")
+
+        Robustness_Stability.random_robustness(self, best_c=best_c, best_r=best_r, exp_data=exp_data,
+                                               timepoints=timepoints,
+                                               RandomSeed=RandomSeed, RandomAdja=RandomAdja, RandomPath=RandomPath,
+                                               suffix=suffix)
+
+    # Stability
+
+    def compute_stability(self, Sliding_Window=None):
+        # Initialization
+        if self.use_expression_values:
+            gene_exp = '_SNCA'
+            suffix = "_{}{}".format(self.seed, gene_exp)
+        else:
+            suffix = "_{}".format(self.seed)
+        try:
+            os.mkdir('../plots/Stab_Grp/')
+        except WindowsError:  # For Mac users need to replace by OSError.
+            print("")
+        try:
+            os.mkdir('../plots/Stab_Grp_Sliding/')
+        except WindowsError:  # For Mac users need to replace by OSError.
+            print("")
+        _, fit = dm.find_best_c()
+        Robustness_Stability.stability(exp_data=exp_data, connectivity_ipsi=self.connectivity_ipsi,
+                                       connectivity_contra=self.connectivity_contra, nb_region=nb_region,
+                                       timepoints=timepoints, c_rng=self.c_rng, r=fit, Sliding_Window=Sliding_Window,
+                                       suffix=suffix, seed=seed)
+
+
+    def plot_individual_stability(self, exp_data, Sliding_Window=None):
+        # Initialization
+
+        if self.use_expression_values:
+            gene_exp = '_SNCA'
+            suffix = "_{}{}".format(self.seed, gene_exp)
+        else:
+            suffix = "_{}".format(self.seed)
+
+        try:
+            os.mkdir('../plots/Stab_Ind/')
+        except WindowsError:  # For Mac users need to replace by OSError.
+            print("")
+
+        try:
+            os.mkdir('../plots/Stab_Ind_Sliding/')
+        except WindowsError:  # For Mac users need to replace by OSError.
+            print("")
+        _, fit = dm.find_best_c()
+        Robustness_Stability.stability_individual(exp_data=exp_data, connectivity_ipsi=dm.connectivity_ipsi,
+                                                  connectivity_contra=dm.connectivity_contra, nb_region=nb_region,
+                                                  timepoints=timepoints, c_rng=dm.c_rng, suffix=suffix, r=fit, seed=seed,
+                                                  Sliding_Window= Sliding_Window)
+
 
 if __name__ == '__main__':
-
     # DataFrame with header, pS129-alpha-syn quantified in each brain region
+
     exp_data = pd.read_csv("./Data83018/data.csv", header=0)
 
-    synuclein = pd.read_csv("./Data83018/SncaExpression.csv", index_col=0, header=None) # Gene Expression ==> Generalization
+    synuclein = pd.read_csv("./Data83018/SncaExpression.csv", index_col=0,
+                            header=None)  # Gene Expression ==> Generalization
 
     timepoints = [1, 3, 6]
 
-    # Load data and computation Laplacian matrices
+    seed = "iCPu"
+
+    use_expression_values = None
+
+    nb_region = 58
+
+# Load data
+
     dm = DataManager(exp_data=exp_data,
                      synuclein=synuclein,
                      timepoints=timepoints,
-                     seed='iCPU',
-                     use_expression_values=None)
-    dm.compute_graph() # Returns different l_out
-                       # Need to consider the gene expression
+                     seed=seed,
+                     use_expression_values=use_expression_values)
 
-    #### First checking dm
-    #### Second checking next
+# Main Functions
+    # Computation of the Laplacian
+
+    dm.compute_graph()
 
     # Use experimental data to fit the model and find the best c (scaling parameter) and best r
 
     c, r = dm.find_best_c()
-    #c_r_table = dm.find_c_r()
-
-    # Controls to test the robustness of the model - If ALL TRUE then takes 25 min to run the code
-    #dm.model_robustness(best_c=c, best_r=r, exp_data=exp_data, timepoints=timepoints,
-    #                    RandomSeed=False, RandomAdja=False, RandomPath=False, suffix='')
 
     # Predict pathology
-    #predicted_pathology = dm.predict_pathology(c_Grp=c)
-    #predicted_pathology_seeding_sn = dm.predict_pathology(c_Grp=c, seeding_region='iSN', suffix='_seedSN')
-    #predicted_pathology_SCNA = dm.predict_pathology(c_Grp=c, suffix='_SNCA') #SCNA
 
-    # Computing the Vulnerability heatmap
-    #dm.predicted_heatmap(Drop_Seed=True)
-    #patho=dm.predicted_heatmap(Drop_Seed=True, suffix="_seedSN")
-    #dm.predicted_heatmap(Drop_Seed=True, suffix="_SNCA")
+    predicted_pathology = dm.predict_pathology(c_Grp=c)
 
-    # Compare model-based prediction with observed data to extrapolate region vulnerability
-    #dm.compute_vulnerability(Xt_Grp=predicted_pathology, c_Grp=c)
-    #dm.compute_vulnerability(Xt_Grp=predicted_pathology_seeding_sn, c_Grp=c, suffix='_seedSN')
-    #dm.compute_vulnerability(Xt_Grp=predicted_pathology_SNCA, c_Grp=c, suffix='_SNCA')
+# Main outputs of the model; Output_table - Predicted_Vs_Pathology - Density_Vs_Residuals
 
+    dm.compute_outputs_and_graphs(Xt_Grp=predicted_pathology)
 
+    # Predicted heatmap
+
+    dm.predicted_heatmap(Drop_Seed=True)
+
+    # Plotting r(c) for each MPI
+
+    dm.plotting_r_function_of_c()
+
+# Controls
+    # Robustness of the model - If ALL TRUE then takes 25 min to run the code
+
+    # dm.model_robustness(best_c=c, best_r=r,
+    #                     exp_data=exp_data, timepoints=timepoints,
+    #                     RandomSeed=False, RandomAdja=False, RandomPath=False)
+
+# Stability
     # Stability of the model --> All animals included
-    nb_region = 57
-    #stab = dm.compute_stability(graph=True, Sliding_Window=6)
-    #stab = dm.compute_stability(graph=True, Sliding_Window=None, suffix="Seed_SN_")
-    #stab = dm.compute_stability(graph=True, Sliding_Window=None, suffix="Snca_")
+
+    #dm.compute_stability(Sliding_Window=None)
 
     # Stability of the model --> Individuals
-    #ind_table = dm.compute_individual_stability(exp_data=exp_data, nb_region=58)
+
+    #dm.plot_individual_stability(exp_data=exp_data, Sliding_Window=4)

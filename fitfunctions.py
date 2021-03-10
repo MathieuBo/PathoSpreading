@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.linalg import expm
 from scipy import stats
+import pandas as pd
 
 # Functions
 def make_Xo(ROI, ROInames):
@@ -15,11 +16,14 @@ def make_Xo(ROI, ROInames):
     Outputs:
     Xo --> DataFrame (vector columns). Size = len(ROInames) and contains zeros except at the ROI index where the value is 1
     """
-    n_regions = len(ROInames)
-    # Initialisation of the Xo Vector at t = 0
-    Xo = np.zeros((n_regions, ))
-    idx = [i for i in range(0, len(ROInames)) if ROInames[i] == ROI]
-    Xo[idx] += 1
+    if ROI not in ROInames:
+        print("[ERROR in make_Xo]: ", ROI, "is not in the list of ROI. Please check the seed.")
+    else:
+        n_regions = len(ROInames)
+        # Initialisation of the Xo Vector at t = 0
+        Xo = np.zeros((n_regions, ))
+        idx = [i for i in range(0, len(ROInames)) if ROInames[i] == ROI]
+        Xo[idx] += 1
     return Xo
 
 
@@ -163,27 +167,3 @@ def c_fit_individual(ind_patho, L_out, tp, seed, c_rng, roi_names):
             c_fit_animal.loc["c_fit", (str(time), str(mouse))] = local_c
             c_fit_animal.loc["r", (str(time),str(mouse))] = local_r
     return c_fit_animal
-
-
-###################
-import pandas as pd
-import numpy as np
-import process_files
-import Laplacian
-
-connectivity_ipsi = pd.read_csv("./Data83018/connectivity_ipsi.csv", index_col=0)
-connectivity_contra = pd.read_csv("./Data83018/connectivity_contra.csv", index_col=0)
-exp_data = pd.read_csv("./Data83018/data.csv", header=0)
-c_rng = np.linspace(start=0.01, stop=10, num=100)
-timepoints =[1,3,6]
-
-W, path_data, conn_names, ROInames = process_files.process_pathdata(exp_data=exp_data,
-                                                                                        connectivity_contra=connectivity_contra,
-                                                                                        connectivity_ipsi=connectivity_ipsi)
-ind_grp = process_files.ind_pathology(timepoints=timepoints, path_data=path_data)
-l_out = Laplacian.get_laplacian(adj_mat=W)
-
-c_fit_ani = c_fit_individual(ind_patho=ind_grp, L_out=l_out, tp=timepoints, seed="iCPu", c_rng=c_rng, roi_names=ROInames)
-
-
-

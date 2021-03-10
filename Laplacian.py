@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def get_laplacian(adj_mat, expression_data=None, return_in_degree=False):
     """ Compute the Degree Matrix from adjacency matrix and then compute the Laplacian Matrix.
     ---

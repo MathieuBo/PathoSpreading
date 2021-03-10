@@ -43,8 +43,9 @@ def random_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=Fal
         plt.title("{r} seed VS random region seed".format(r=self.seed))
         plt.ylabel("Fit(r)")
         plt.legend()
-        plt.savefig('../plots/Model_Robustness/Random_Seed{}.png'.format(suffix), dpi=300)
-        plt.savefig('../plots/Model_Robustness/Random_Seed{}.pdf'.format(suffix), dpi=300)
+
+        plt.savefig('../plots/Model_Robustness/Random_Seed.png', dpi=300)
+        plt.savefig('../plots/Model_Robustness/Random_Seed.pdf', dpi=300)
         plt.show()
     else:
         print("Robustness- Random seeding ignored")
@@ -118,7 +119,7 @@ def random_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=Fal
 
 # Initialization of the stability computation
 
-def initialization_stability(exp_data, connectivity_ipsi,connectivity_contra, nb_region):
+def initialization_stability(exp_data, connectivity_ipsi,connectivity_contra, nb_region, seed):
     """
     Function that first processes the quantified alpha-synuclein data and the connectivity maps (ipsilateral and controlateral)
    and slice them after random sampling. The seed of injection is moved to be the first element of path_data and W.
@@ -141,8 +142,8 @@ def initialization_stability(exp_data, connectivity_ipsi,connectivity_contra, nb
     #Randomizing ROINames
     conn_names = [i.split(' (')[0] for i in connectivity_contra.columns]
 
-    conn_names_wX_seed = [i for i in conn_names if i not in ['CPu']]
-    i_seq_rand = ['iCPu'] + ["i" + k for k in np.random.choice(conn_names_wX_seed, size=nb_region-1, replace=False)]
+    conn_names_wX_seed = [i for i in conn_names if i not in [seed[1::]]]
+    i_seq_rand = ['i' + seed[1::]] + ["i" + k for k in np.random.choice(conn_names_wX_seed, size=nb_region-1, replace=False)]
     c_seq_rand = ["c" + i[1::] for i in i_seq_rand]
     ROInames = i_seq_rand + c_seq_rand
 
@@ -158,13 +159,13 @@ def initialization_stability(exp_data, connectivity_ipsi,connectivity_contra, nb
     connectivity_contra.index = conn_names
 
         # Seed as first row and column
-    connectivity_ipsi = connectivity_ipsi[["CPu"] + [c for c in connectivity_ipsi if c not in ['CPu']]]
+    connectivity_ipsi = connectivity_ipsi[[seed[1::]] + [c for c in connectivity_ipsi if c not in [seed[1::]]]]
     connectivity_ipsi = connectivity_ipsi.reindex(
-        ["CPu"] + [c for c in connectivity_ipsi.index if c not in ["CPu"]])
+        [seed[1::]] + [c for c in connectivity_ipsi.index if c not in [seed[1::]]])
 
-    connectivity_contra = connectivity_contra[["CPu"] + [c for c in connectivity_contra if c not in ['CPu']]]
+    connectivity_contra = connectivity_contra[[seed[1::]] + [c for c in connectivity_contra if c not in [seed[1::]]]]
     connectivity_contra = connectivity_contra.reindex(
-        ["CPu"] + [c for c in connectivity_contra.index if c not in ["CPu"]])
+        [seed[1::]] + [c for c in connectivity_contra.index if c not in [seed[1::]]])
 
         # Slicing the Adjacency using ROInames
     connectivity_names =[i[1::] for i in i_seq_rand]
@@ -178,7 +179,8 @@ def initialization_stability(exp_data, connectivity_ipsi,connectivity_contra, nb
 
 # All groups included
 
-def stability(exp_data, connectivity_ipsi, connectivity_contra, nb_region, timepoints, c_rng):
+def stability(exp_data, connectivity_ipsi, connectivity_contra, nb_region, timepoints,
+              c_rng, r, Sliding_Window, suffix, seed):
     """
     Compute the correlation coefficient obtained from 0 to nb_regions data used. Three minimal regions required to
     compute the correlation coefficients for each MPI.
@@ -189,7 +191,9 @@ def stability(exp_data, connectivity_ipsi, connectivity_contra, nb_region, timep
     connectivity_contra: Dataframe containing the controlateral connectivity data -csv
     nb_region: Number of regions to use for the computation of the correlation coefficient - integer
     timepoints: list of the different timepoints
-    c_rng:
+    c_rng: Array from 1 to 10
+    graph: Bool- True leads to graphs plots
+    Sliding_windows: Int- Plots the Sliding Mean and Sliding SD
     ---
     Outputs:
     model_stability: DataFrame that contains the number of regions used and the subsequent values of correlation
@@ -203,22 +207,16 @@ def stability(exp_data, connectivity_ipsi, connectivity_contra, nb_region, timep
     for regions in tqdm(range(1, nb_region+1)):
 
         W, path_data, ROInames = initialization_stability(exp_data=exp_data, connectivity_ipsi=connectivity_ipsi,
-                                                          connectivity_contra=connectivity_contra, nb_region=regions)
+                                                          connectivity_contra=connectivity_contra, nb_region=regions,
+                                                          seed=seed)
 
         if regions > 3:
-
-            #while sum(W.iloc[0, :]) == 0:
-                # print("Loading a Connectivity matrix with at least one non-null value in CPu")
-                # W, path_data, ROInames = initialization_stability(exp_data=exp_data,
-                #                                                   connectivity_ipsi=connectivity_ipsi,
-                #                                                   connectivity_contra=connectivity_contra,
-                #                                                   nb_region=regions)
 
             L = Laplacian.get_laplacian(adj_mat=W, expression_data=None, return_in_degree=False)
                     # Need a minimum of 2 values to have a valid Laplacian
             grp_mean = process_files.mean_pathology(timepoints=timepoints, path_data=path_data)
 
-            c, r = fitfunctions.c_fit(log_path=np.log10(grp_mean), L_out=L, tp=timepoints, seed='iCPu', c_rng=c_rng,
+            c, r = fitfunctions.c_fit(log_path=np.log10(grp_mean), L_out=L, tp=timepoints, seed=seed, c_rng=c_rng,
                                         roi_names=ROInames)
             #List of the c and r values
             c_stab.append(c)
@@ -226,11 +224,60 @@ def stability(exp_data, connectivity_ipsi, connectivity_contra, nb_region, timep
             rep.append(regions) # List that cumulates the number of regions
         else:
              print("")
-
     r_stab_df = pd.DataFrame(r_stab, columns=["MPI1", "MPI3", "MPI6"])
     regions = pd.DataFrame(rep, columns=["Number Regions"])
-    model_stability = pd.concat([regions, r_stab_df], axis=1)
-    return model_stability
+    stability = pd.concat([regions, r_stab_df], axis=1)
+
+    # Graphs
+    for idx, time in enumerate(timepoints):
+        sns.scatterplot(x=stability["Number Regions"], y=stability["MPI{}".format(time)])
+        sns.regplot(x=stability["Number Regions"], y=stability["MPI{}".format(time)], order=2)
+        plt.hlines(y=r[idx], xmin=0, xmax=nb_region, color="red", label="Best r fit")
+        plt.title("Stability of the model, MPI{} - Conditions{}".format(time, suffix))
+        plt.ylabel("Fit(r)")
+        plt.xlabel("Number of regions used")
+        plt.legend()
+        plt.savefig('../plots/Stab_Grp/Stability_MPI{}{}.png'.format(time, suffix), dpi=300)
+        plt.savefig('../plots/Stab_Grp/Stability_MPI{}{}.pdf'.format(time, suffix), dpi=300)
+        plt.show()
+
+    if Sliding_Window ==None:
+        print('')
+    else:
+        for idx, time in enumerate(timepoints):
+            print("Computing Sliding Window Mean")
+            for i in tqdm(range(2, Sliding_Window + 1)):
+                mean_stab = stability["MPI{}".format(time)].rolling(i).mean()
+                sns.scatterplot(stability["Number Regions"], mean_stab.values)
+                sns.regplot(stability["Number Regions"], mean_stab.values, order=2)
+                plt.hlines(y=r[idx], xmin=0, xmax=nb_region, color="red", label="Best r fit")
+                plt.title("Stability of the model, MPI{}, Sliding Window Mean = {} \n"
+                          " Conditions{}".format(time, i, suffix))
+                plt.ylabel("Sliding_Mean Fit(r)")
+                plt.xlabel("Number of regions used")
+                plt.xlim(xmin=3, xmax=nb_region)
+                plt.ylim(ymin=0, ymax=1)
+                plt.grid()
+                plt.savefig("../plots/Stab_Grp_Sliding/Mean_MPI{}_SW{}{}.png".format(time, i, suffix), dpi=300)
+                plt.savefig("../plots/Stab_Grp_Sliding/Mean_MPI{}_SW{}{}.pdf".format(time, i, suffix), dpi=300)
+                plt.show()
+            print("Computing Sliding Window SD")
+            for i in tqdm(range(2, Sliding_Window + 1)):
+                std_stab = stability["MPI{}".format(time)].rolling(i).std()
+                # plt.plot(stability["Number Regions"].values, std_stab.values, 'o-')
+                sns.scatterplot(stability["Number Regions"].values, std_stab.values)
+                sns.regplot(stability["Number Regions"].values, std_stab.values, order=2)
+                plt.title("Stability of the model, MPI{}, Sliding Window SD = {} \n"
+                          " Conditions{}".format(time, i, suffix))
+                plt.ylabel("Sliding_SD Fit(r)")
+                plt.xlabel("Number of regions used")
+                plt.xlim(xmin=3, xmax=nb_region)
+                plt.ylim(ymin=-0.05, ymax=0.275)
+                plt.grid()
+                plt.savefig("../plots/Stab_Grp_Sliding/SD_MPI{}_SW{}{}.png".format(time, i, suffix), dpi=300)
+                plt.savefig("../plots/Stab_Grp_Sliding/SD_MPI{}_SW{}{}.pdf".format(time, i, suffix), dpi=300)
+                plt.show()
+    return stability
 
 
 # Computing stability at the scale of an individual
@@ -310,7 +357,8 @@ def c_fit_individual(ind_patho, L_out, tp, c_rng, seed, roi_names):
     return c_fit_animal
 
 
-def stability_individual(exp_data, connectivity_ipsi, connectivity_contra, nb_region, timepoints, c_rng):
+def stability_individual(exp_data, connectivity_ipsi, connectivity_contra,
+                         nb_region, timepoints, c_rng, suffix, seed, r, Sliding_Window):
     """
     Compute the correlation coefficient obtained from 0 to nb_regions data used for each animals.
     Three minimal regions required to create a Laplacian
@@ -331,22 +379,17 @@ def stability_individual(exp_data, connectivity_ipsi, connectivity_contra, nb_re
     W, path_data, conn_names, ROInames = process_files.process_pathdata(exp_data=exp_data,
                                                                         connectivity_contra=connectivity_contra,
                                                                         connectivity_ipsi=connectivity_ipsi)
-    idx_reg = [i + 1 for i in range(0, nb_region)]
     ind_grp = ind_pathology(timepoints=timepoints, path_data=path_data)
     r_ind_per_reg = pd.DataFrame(np.zeros((0, len(ind_grp.columns))), columns=ind_grp.columns)
 
     for regions in tqdm(range(1, nb_region + 1)):
 
         W, path_data, ROInames = initialization_stability(exp_data=exp_data, connectivity_ipsi=connectivity_ipsi,
-                                                          connectivity_contra=connectivity_contra, nb_region=regions)
+                                                          connectivity_contra=connectivity_contra, nb_region=regions,
+                                                          seed=seed)
 
         if regions > 3:
-            # while sum(W.iloc[0, :]) == 0:
-            # print("Loading a Connectivity matrix with at least one non-null value in CPu")
-            # W, path_data, ROInames = initialization_stability(exp_data=exp_data,
-            #                                                   connectivity_ipsi=connectivity_ipsi,
-            #                                                   connectivity_contra=connectivity_contra,
-            #                                                   nb_region=regions)
+
             ind_grp = ind_pathology(timepoints=timepoints, path_data=path_data)
             L = Laplacian.get_laplacian(adj_mat=W, expression_data=None, return_in_degree=False)
             # Need a minimum of 2 values to have a valid Laplacian
@@ -354,19 +397,63 @@ def stability_individual(exp_data, connectivity_ipsi, connectivity_contra, nb_re
                                          L_out=L,
                                          tp=timepoints,
                                          c_rng=c_rng,
-                                         seed="iCPu",
+                                         seed=seed,
                                          roi_names=ROInames)
             r_ind_per_reg.loc[str(regions), :] = c_fit_ani.loc['r', :].copy()
 
     for time in timepoints:
         for mouse in range(1, len(r_ind_per_reg.loc[:, str(time)].columns) + 1):
-            fig = plt.figure(figsize=(15, 6))
+            plt.figure(figsize=(15, 6))
             sns.scatterplot(x=r_ind_per_reg.index.values, y=r_ind_per_reg[str(time)][str(mouse)].values)
             plt.xlabel("Number of Regions")
             plt.ylabel("Fit (R)")
-            plt.title("R(Number of regions used) - MPI {} - Mouse {}".format(time, mouse))
-            plt.savefig("'../plots/Stab_Ind/stab_ind_mpi_{}_mouse{}.png".format(time, mouse), dpi=300)
-            plt.savefig("'../plots/Stab_Ind/stab_ind_mpi_{}_mouse{}.pdf".format(time, mouse), dpi=300)
+            plt.title("R(Number of regions used) - MPI {} - Mouse {} \n"
+                      "Conditions{}".format(time, mouse, suffix))
+            plt.savefig("../plots/Stab_Ind/stab_ind_mpi_{}_mouse{}{}.png".format(time, mouse, suffix), dpi=300)
+            plt.savefig("../plots/Stab_Ind/stab_ind_mpi_{}_mouse{}{}.pdf".format(time, mouse, suffix), dpi=300)
             plt.show()
+    if Sliding_Window ==None:
+        print('')
+    else:
+        for idx, time in enumerate(timepoints):
+            print("Computing Sliding Window Mean and SD")
+            for mouse in tqdm(range(1, len(r_ind_per_reg.loc[:, str(time)].columns) + 1)):
+                for i in range(2, Sliding_Window + 1):
+                    mean_stab = r_ind_per_reg[str(time), str(mouse)].rolling(i).mean()
+                    plt.figure(figsize=(15,10))
+                    sns.scatterplot(r_ind_per_reg.index.values, mean_stab.values)
+                    #sns.regplot(r_ind_per_reg.index.values, mean_stab.values, order=2)
+                    plt.hlines(y=r[idx], xmin=0, xmax=nb_region, color="red", label="Best r fit")
+
+                    plt.title("Stability Individual n°{}, MPI{}, Sliding Window Mean = {} \n"
+                              " Conditions{}".format(mouse, time, i, suffix))
+                    plt.ylabel("Sliding_Mean Fit(r)")
+                    plt.xlabel("Number of regions used")
+                    plt.xlim(xmin=3, xmax=nb_region)
+                    plt.ylim(ymin=0, ymax=1)
+                    plt.grid()
+                    plt.savefig("../plots/Stab_Ind_Sliding/Ind_{}_Mean_MPI{}_SW{}{}.png".format(mouse, time, i, suffix), dpi=300)
+                    plt.savefig("../plots/Stab_Ind_Sliding/Ind_{}_Mean_MPI{}_SW{}{}.pdf".format(mouse, time, i, suffix), dpi=300)
+                    plt.show()
+
+                    std_stab = r_ind_per_reg[str(time), str(mouse)].rolling(i).std()
+                    plt.figure(figsize=(15, 10))
+                    sns.scatterplot(r_ind_per_reg.index.values, std_stab.values)
+                    #sns.regplot(r_ind_per_reg.index.values, std_stab.values, order=2)
+
+
+                    plt.title("Stability Individual n°{}, MPI{}, Sliding Window SD = {} \n"
+                              " Conditions{}".format(mouse, time, i, suffix))
+                    plt.ylabel("Sliding_SD Fit(r)")
+                    plt.xlabel("Number of regions used")
+                    plt.xlim(xmin=3, xmax=nb_region)
+                    plt.ylim(ymin=-0.05, ymax=0.275)
+
+                    plt.savefig("../plots/Stab_Ind_Sliding/Ind_{}_SD_MPI{}_SW{}{}.png".format(mouse, time, i, suffix),
+                                dpi=300)
+                    plt.savefig("../plots/Stab_Ind_Sliding/Ind_{}_SD_MPI{}_SW{}{}.pdf".format(mouse, time, i, suffix),
+                                dpi=300)
+                    plt.show()
+
 
     return r_ind_per_reg
