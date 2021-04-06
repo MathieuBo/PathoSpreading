@@ -40,9 +40,8 @@ def random_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=Fal
         sns.swarmplot(data=RndSeed, size=4, zorder=0)
         for time in range(0, len(timepoints)):
             plt.plot(time, best_r[time], "o", color="red", markersize=3)
-        plt.title("{r} seed VS random region seed".format(r=self.seed))
-        plt.ylabel("Fit(r)")
-        plt.legend()
+        plt.title("{r} seed VS random region seed".format(r=self.seed), fontsize=18)
+        plt.ylabel("Fit(r)", fontsize=19)
 
         plt.savefig('../plots/Model_Robustness/Random_Seed.png', dpi=300)
         plt.savefig('../plots/Model_Robustness/Random_Seed.pdf', dpi=300)
@@ -74,9 +73,9 @@ def random_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=Fal
         sns.swarmplot(data=RndAdj, size=4, zorder=0)
         for time in range(0, len(timepoints)):
             plt.plot(time, best_r[time], "o", color="red", markersize=3)
-        plt.title("Adjacency Fit VS random Adjacency shuffle fits")
-        plt.ylabel("Fit(r)")
-        plt.legend()
+        plt.title("Adjacency Fit VS random Adjacency shuffle Fits", fontsize=18)
+        plt.ylabel("Fit(r)", fontsize=19)
+
         plt.savefig('../plots/Model_Robustness/Random_Adja{}.png'.format(suffix), dpi=300)
         plt.savefig('../plots/Model_Robustness/Random_Adja{}.pdf'.format(suffix), dpi=300)
         plt.show()
@@ -108,9 +107,9 @@ def random_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=Fal
         sns.swarmplot(data=RndPath, size=4, zorder=0)
         for time in range(0, len(timepoints)):
             plt.plot(time, best_r[time], "o", color="red", markersize=3)
-        plt.title("Pathology mean/timepoint fit VS shuffled pathology mean/timepoints fits")
-        plt.ylabel("Fit(r)")
-        plt.legend()
+        plt.title("Pathology Fit VS shuffled pathology Fits", fontsize=18)
+        plt.ylabel("Fit(r)", fontsize=19)
+
         plt.savefig('../plots/Model_Robustness/Random_Patho{}.png'.format(suffix), dpi=300)
         plt.savefig('../plots/Model_Robustness/Random_Patho{}.pdf'.format(suffix), dpi=300)
         plt.show()

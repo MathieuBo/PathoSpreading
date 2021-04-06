@@ -3,7 +3,6 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import os
-from tqdm import tqdm
 from scipy.stats import pearsonr, linregress
 from statsmodels.stats.multitest import multipletests
 
@@ -13,6 +12,7 @@ import process_files
 import Laplacian
 import fitfunctions
 import Robustness_Stability
+import summative_model
 
 
 class DataManager(object):
@@ -58,7 +58,7 @@ class DataManager(object):
 
         print('Graph computed - Laplacian matrix created\n')
 
-    def find_best_c(self):
+    def find_best_c_and_r(self):
 
         c_Grp, r = fitfunctions.c_fit(log_path=np.log10(self.grp_mean),
                                       L_out=self.l_out,
@@ -90,6 +90,9 @@ class DataManager(object):
 
         return Xt_Grp
 
+    def predict_iterative(self):
+        summative_model.predict_pathology_iter(self=self, timepoints=timepoints)
+
     def compute_outputs_and_graphs(self, Xt_Grp):
 
         # Initialization
@@ -105,6 +108,9 @@ class DataManager(object):
 
         stats_df = []
         masks = dict()
+        print('---------------------------------------------------')
+        print('----------------NON-ITERATIVE MODEL----------------')
+        print('---------------------------------------------------\n')
         for M in range(0, len(timepoints)):
             Df = pd.DataFrame({"experimental_data": np.log10(self.grp_mean.iloc[:, M]).values,
                                "ndm_data": np.log10(Xt_Grp[M])},
@@ -143,9 +149,9 @@ class DataManager(object):
                        lw=0.8, color='blue', linestyles="dotted", label="Residual")
             sns.regplot(x=mpi["ndm_data"], y=mpi["experimental_data"], data=mpi,
                         scatter_kws={'s': 40, 'facecolor': 'blue'})
-            plt.xlabel("Log(Predicted)")
-            plt.ylabel("Log(Path)")
-            plt.title("Month Post Injection {} - Conditions{}".format(time, suffix))
+            plt.xlabel("Log(Predicted)", fontsize=18)
+            plt.ylabel("Log(Path)", fontsize=18)
+            plt.title("Month Post Injection {} - Conditions{}".format(time, suffix), fontsize=19)
             plt.legend()
 
             plt.savefig('../plots/Predicted_VS_Path_MPI{}{}.png'.format(time, suffix), dpi=300)
@@ -242,7 +248,7 @@ class DataManager(object):
             plt.title('MPI {} - Conditions{}'.format(t, suffix))
             plt.savefig('../plots/Fits(c)/plot_r_(c)_MPI{}{}.png'.format(t, suffix), dpi=300)
             plt.show()
-
+        return c_r_table
     # Controls
 
     def model_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=False,
@@ -280,7 +286,7 @@ class DataManager(object):
             os.mkdir('../plots/Stab_Grp_Sliding/')
         except WindowsError:  # For Mac users need to replace by OSError.
             print("")
-        _, fit = dm.find_best_c()
+        _, fit = dm.find_best_c_and_r()
         Robustness_Stability.stability(exp_data=exp_data, connectivity_ipsi=self.connectivity_ipsi,
                                        connectivity_contra=self.connectivity_contra, nb_region=nb_region,
                                        timepoints=timepoints, c_rng=self.c_rng, r=fit, Sliding_Window=Sliding_Window,
@@ -305,13 +311,32 @@ class DataManager(object):
             os.mkdir('../plots/Stab_Ind_Sliding/')
         except WindowsError:  # For Mac users need to replace by OSError.
             print("")
-        _, fit = dm.find_best_c()
+        _, fit = dm.find_best_c_and_r()
         Robustness_Stability.stability_individual(exp_data=exp_data, connectivity_ipsi=dm.connectivity_ipsi,
                                                   connectivity_contra=dm.connectivity_contra, nb_region=nb_region,
                                                   timepoints=timepoints, c_rng=dm.c_rng, suffix=suffix, r=fit, seed=seed,
                                                   Sliding_Window= Sliding_Window)
 
+# Test
+    def extract_c_r_iter(self):
+        # Initialization
+        if self.use_expression_values:
+            gene_exp = '_SNCA'
+            suffix = "_{}{}".format(self.seed, gene_exp)
+        else:
+            suffix = "_{}".format(self.seed)
+        try:
+            os.mkdir('../plots/Fits(c)/')
+        except WindowsError:  # For Mac users need to replace by OSError.
+            print("")
 
+        c_r_table = summative_model.extract_c_and_r_iter(log_path=np.log10(self.grp_mean),
+                                                 L_out=self.l_out,
+                                                 tp=timepoints,
+                                                 seed=self.seed,
+                                                 c_rng=self.c_rng,
+                                                 roi_names=self.ROInames)
+        return c_r_table
 if __name__ == '__main__':
     # DataFrame with header, pS129-alpha-syn quantified in each brain region
 
@@ -324,7 +349,7 @@ if __name__ == '__main__':
 
     seed = "iCPu"
 
-    use_expression_values = None
+    use_expression_values = False
 
     nb_region = 58
 
@@ -343,11 +368,14 @@ if __name__ == '__main__':
 
     # Use experimental data to fit the model and find the best c (scaling parameter) and best r
 
-    c, r = dm.find_best_c()
+    c, r = dm.find_best_c_and_r()
 
     # Predict pathology
 
     predicted_pathology = dm.predict_pathology(c_Grp=c)
+
+    # Predict pathology with the iterative model
+    #dm.predict_iterative()
 
 # Main outputs of the model; Output_table - Predicted_Vs_Pathology - Density_Vs_Residuals
 
@@ -355,18 +383,18 @@ if __name__ == '__main__':
 
     # Predicted heatmap
 
-    dm.predicted_heatmap(Drop_Seed=True)
+    #dm.predicted_heatmap(Drop_Seed=True)
 
     # Plotting r(c) for each MPI
 
-    dm.plotting_r_function_of_c()
+    #c_r_table = dm.plotting_r_function_of_c()
 
 # Controls
     # Robustness of the model - If ALL TRUE then takes 25 min to run the code
 
     # dm.model_robustness(best_c=c, best_r=r,
     #                     exp_data=exp_data, timepoints=timepoints,
-    #                     RandomSeed=False, RandomAdja=False, RandomPath=False)
+    #                     RandomSeed=True, RandomAdja=True, RandomPath=True)
 
 # Stability
     # Stability of the model --> All animals included
