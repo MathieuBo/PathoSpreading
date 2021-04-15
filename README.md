@@ -28,35 +28,25 @@ All data are contained in the folder Data83018. The essential files are the foll
 **Pipeline.py**
 This is the main file allowing to control and run the model. Several functions have been implemented to allow to run the model it is simple version or combining expression values. It also allows to run some robustness tests. 
 
-Main inputs:
+Main *inputs*:
 - exp_data = Quantification of alpha-synuclein pathology (values from data.csv)
 - timepoints = by default [1,3,6]. Can be modified when changing the experimental data set.
-- connectivity_ipsi.csv & connectivity_contra.csv = Contains the connectivity data from the Allen Brain Institute.
-- synuclein = Energy (i.e. expression) values found in SncaExpression.csv.
-		By defaut use_expression_values= False. When True the code weights the Laplacian matrix with the snca gene expression in Laplacian.py.
-
-- seed = By default: iCPu. Seed in which the disease in injected. If not in seed list returns [ERROR in make_Xo]:  seed is not in the list of ROI.
+- connectivity_ipsi.csv & connectivity_contra.csv = connectivity matrices obtained from [Oh et al. 2014](https://www.nature.com/articles/nature13186)
+- synuclein = Energy (i.e. expression) values found in SncaExpression.csv. By defaut ```use_expression_values= False```. 
+- seed = seeding region. By default: iCPu. If the seed is not found in seed list returns [ERROR in make_Xo].
 - nb_of_region = by default: 58 (maximum value). Used the compute the robustness of the model.
 
-Main outputs:
+Main *outputs*:
 The main outputs are saved in two main folders.
 In the folder "output":
 - predicted_pathology{seed}.csv = CSV table with the predicted pathology values for each timepoint.
-
-- model_output_MPI{timepoint}{seed}.csv = CSV table that contains the results of the 
-linear regression for a specific timepoint.
-
---stats{seed}.csv = Contains for each timepoint the Pearson's r coefficient, the p-value and the corrected
-p-value. (Bonferroni's correction)
+- model_output_MPI{timepoint}{seed}.csv = CSV table that contains the results of the linear regression for a specific timepoint.
+- stats{seed}.csv = Contains for each timepoint the Pearson's r coefficient, the p-value and the corrected p-value. (Bonferroni's correction)
 
 In the folder "plots"
 - Predicted_VS_Path_MPI{timepoint}{seed}.png/.pdf = lollipop plot showing the predicted vs pathology data.
-
 - density_VS_residual{seed}.png/.pdf = Density plots of the residuals for a specific seed.
-
-- predicted_pathology{seed}.csv = Heatmap with normalized values of predicted pathology. 
-By default Drop_seed : False. If turned True then it drops the seed from the Heatmap and plots
-Predictions_{seed}_excluded{seed}.png/.pdf.
+- predicted_pathology{seed}.csv = Heatmap with normalized values of predicted pathology. By default ```Drop_seed : False```. If True then it drops the seed region from the Heatmap and plots to allow a better dynamic range in visualization. Predictions_{seed}_excluded{seed}.png/.pdf.
 
 -plot_r_(c)_MPI{timepoint}{seed}.png/.pdf = Plots of the evolution of r with respect to c
 for a specific timepoint.
