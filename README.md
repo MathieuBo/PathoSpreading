@@ -8,20 +8,20 @@ This ReadMe is subdivided into different sections and aimed at clarifying the ma
 ## Requirements
 This code has been written for Python 3.6/3.7 and successfully tested on Microsoft Windows 10 and MacOS 11.2.3 (BigSur). 
 It requires the following packages:
--numpy
--matplotlib
--seaborn		
--pandas
--scipy
--tqdm
--statsmodels.stats.multitest
-
+- numpy
+- matplotlib
+- seaborn		
+- pandas
+- scipy
+- tqdm
+- statsmodels
+- 
 ## Datasets
 All data are contained in the folder Data83018. The essential files are the following ones:
--data.csv [37rowsx118columns]
--connectivity_ipsi.csv [58rowsx58columns]
--connectivity_contra.csv [58rowsx58columns]
--SncaExpression.csv [116rowsx2columns]
+- data.csv [37rowsx118columns]
+- connectivity_ipsi.csv [58rowsx58columns]
+- connectivity_contra.csv [58rowsx58columns]
+- SncaExpression.csv [116rowsx2columns]
 
 ## Scripts
 
