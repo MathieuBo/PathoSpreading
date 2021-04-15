@@ -41,7 +41,7 @@ class DataManager(object):
 
         self.grp_mean = process_files.mean_pathology(timepoints=timepoints, path_data=self.path_data)
 
-        self.c_rng = np.linspace(start=0.01, stop=10, num=100)
+        self.c_rng = np.linspace(start=0.01, stop=100, num=1000)
 
         self.use_expression_values = use_expression_values
 
@@ -261,6 +261,7 @@ class DataManager(object):
             plt.savefig('../plots/Fits(c)/plot_r_(c)_MPI{}{}.png'.format(t, suffix), dpi=300)
             plt.show()
         return c_r_table
+
     # Controls
 
     def model_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=False,
@@ -329,7 +330,7 @@ class DataManager(object):
                                                   timepoints=timepoints, c_rng=dm.c_rng, suffix=suffix, r=fit, seed=seed,
                                                   Sliding_Window= Sliding_Window)
 
-# Test
+    # Iterative model
     def extract_c_r_iter(self):
         # Initialization
         if self.use_expression_values:

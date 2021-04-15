@@ -5,10 +5,6 @@ def process_pathdata(exp_data, connectivity_ipsi, connectivity_contra):
 
     """
     Function that processes the quantified alpha-synuclein data and the connectivity maps (ipsilateral and controlateral)
-    Choosing a number of regions will return segmented part of W and Path_data which first data elements will be the
-    values of the seed CPu.
-    Possibility to implement an argument seed to consider which element is the seed and subsequently include it
-    when nb_regions non-null
     ---
     Inputs:
         exp_data --> Table that contains the values of the quantified alpha-synuclein pathology measured at different
