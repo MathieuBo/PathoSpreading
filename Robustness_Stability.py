@@ -36,16 +36,22 @@ def random_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=Fal
 
         print('{r} seed is the {p}th percentile\n'.format(r=self.seed, p=percentile))
         print("Plotting the {r} Fit versus Fits of random seed regions... ".format(r=self.seed))
-        RndSeed = pd.DataFrame(r_val, columns=["MPI1", "MPI3", "MPI6"])  # should be same as grp.mean
-        sns.swarmplot(data=RndSeed, size=4, zorder=0)
-        for time in range(0, len(timepoints)):
-            plt.plot(time, best_r[time], "o", color="red", markersize=3)
-        plt.title("{r} seed VS random region seed".format(r=self.seed), fontsize=18)
-        plt.ylabel("Fit(r)", fontsize=19)
 
+        RndSeed = pd.DataFrame(r_val, columns=["MPI1", "MPI3", "MPI6"])  # should be same as grp.mean
+        cmap= plt.get_cmap('tab10')
+
+        plt.figure(figsize=(4.2, 3), constrained_layout=True)
+        sns.swarmplot(data=RndSeed, size=5, zorder=0, alpha=.5, color='gray', edgecolor='darkgray')
+        for time in range(0, len(timepoints)):
+            plt.plot(time, best_r[time], "d", color=cmap(1), markersize=10)
+
+        plt.ylabel("Pearson's $r$", fontsize=16)
+        plt.ylim(-.5, .8)
+        plt.yticks([-.4, 0, .4, .8])
+        plt.xlabel(' ')
         plt.savefig('../plots/Model_Robustness/Random_Seed.png', dpi=300)
         plt.savefig('../plots/Model_Robustness/Random_Seed.pdf', dpi=300)
-        plt.show()
+
     else:
         print("Robustness- Random seeding ignored")
     # Random Adjacency Matrix
@@ -70,15 +76,20 @@ def random_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=Fal
         print('{r} seed is the {p}th percentile\n'.format(r='iCPu', p=percentile))
         print("Plotting the adjacency matrix Fit versus Fits of random adjacency matrices... ")
         RndAdj = pd.DataFrame(r_adj, columns=["MPI1", "MPI3", "MPI6"])
-        sns.swarmplot(data=RndAdj, size=4, zorder=0)
+
+        plt.figure(figsize=(4.2, 3), constrained_layout=True)
+        sns.swarmplot(data=RndAdj, size=5, zorder=0, alpha=.5, color='gray', edgecolor='darkgray')
         for time in range(0, len(timepoints)):
-            plt.plot(time, best_r[time], "o", color="red", markersize=3)
-        plt.title("Adjacency Fit VS random Adjacency shuffle Fits", fontsize=18)
-        plt.ylabel("Fit(r)", fontsize=19)
+            plt.plot(time, best_r[time], "d", color=cmap(1), markersize=10)
+
+        plt.ylabel("Pearson's $r$", fontsize=16)
+        plt.ylim(-.5, .8)
+        plt.yticks([-.4, 0, .4, .8])
+        plt.xlabel(' ')
 
         plt.savefig('../plots/Model_Robustness/Random_Adja{}.png'.format(suffix), dpi=300)
         plt.savefig('../plots/Model_Robustness/Random_Adja{}.pdf'.format(suffix), dpi=300)
-        plt.show()
+
     else:
         print("Robustness- Random Shuffle of Adjacency matrix ignored")
     # Random Pathology Mean Matrix
@@ -104,15 +115,20 @@ def random_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=Fal
         print('{r} seed is the {p}th percentile\n'.format(r='iCPu', p=percentile))
         print("Plotting the non-shuffled pathology Fit versus shuffled pathology fits ")
         RndPath = pd.DataFrame(r_path, columns=["MPI1", "MPI3", "MPI6"])
-        sns.swarmplot(data=RndPath, size=4, zorder=0)
+
+        plt.figure(figsize=(4.2, 3), constrained_layout=True)
+        sns.swarmplot(data=RndPath, size=5, zorder=0, alpha=.5, color='gray', edgecolor='darkgray')
         for time in range(0, len(timepoints)):
-            plt.plot(time, best_r[time], "o", color="red", markersize=3)
-        plt.title("Pathology Fit VS shuffled pathology Fits", fontsize=18)
-        plt.ylabel("Fit(r)", fontsize=19)
+            plt.plot(time, best_r[time], "d", color=cmap(1), markersize=10)
+
+        plt.ylabel("Pearson's $r$", fontsize=16)
+        plt.ylim(-.5, .8)
+        plt.yticks([-.4, 0, .4, .8])
+        plt.xlabel(' ')
 
         plt.savefig('../plots/Model_Robustness/Random_Patho{}.png'.format(suffix), dpi=300)
         plt.savefig('../plots/Model_Robustness/Random_Patho{}.pdf'.format(suffix), dpi=300)
-        plt.show()
+
     else:
         print("Robustness- Random Shuffle of Pathology Mean matrix ignored")
 
@@ -453,6 +469,5 @@ def stability_individual(exp_data, connectivity_ipsi, connectivity_contra,
                     plt.savefig("../plots/Stab_Ind_Sliding/Ind_{}_SD_MPI{}_SW{}{}.pdf".format(mouse, time, i, suffix),
                                 dpi=300)
                     plt.show()
-
 
     return r_ind_per_reg

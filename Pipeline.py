@@ -14,6 +14,9 @@ import fitfunctions
 import Robustness_Stability
 import summative_model
 
+#Plot settings
+plt.rc('xtick', labelsize=14)
+plt.rc('ytick', labelsize=14)
 
 class DataManager(object):
     # Initialization
@@ -103,7 +106,7 @@ class DataManager(object):
             suffix = "_{}".format(self.seed)
         try:
             os.mkdir('../plots/Density_vs_residuals/')
-        except WindowsError:  # For Mac users need to replace by OSError.
+        except OSError:  # For Mac users need to replace by OSError.
             print("")
 
         stats_df = []
@@ -140,36 +143,45 @@ class DataManager(object):
             # Saving the data as csv
             Df.to_csv('../output/model_output_MPI{}{}.csv'.format(timepoints[M], suffix))
 
-        # Saving the lollipop plots
+        # Saving the scatter plots
         for time in timepoints:
             mpi = pd.read_csv('../output/model_output_MPI{}{}.csv'.format(time, suffix))
             mpi = mpi.rename(columns={'Unnamed: 0': 'region'})
-            plt.figure()
-            plt.vlines(mpi["ndm_data"], mpi['linreg_data'], mpi['linreg_data'] + mpi['residual'] - 0.04,
-                       lw=0.8, color='blue', linestyles="dotted", label="Residual")
+            plt.figure(figsize=(4, 3), constrained_layout=True)
             sns.regplot(x=mpi["ndm_data"], y=mpi["experimental_data"], data=mpi,
-                        scatter_kws={'s': 40, 'facecolor': 'blue'})
-            plt.xlabel("Log(Predicted)", fontsize=18)
-            plt.ylabel("Log(Path)", fontsize=18)
-            plt.title("Month Post Injection {} - Conditions{}".format(time, suffix), fontsize=19)
-            plt.legend()
-
+                        scatter_kws={'s': 40}, truncate=False)
+            plt.xlabel("Log(Predicted)", fontsize=16)
+            plt.ylabel("Log(Path)", fontsize=16)
             plt.savefig('../plots/Predicted_VS_Path_MPI{}{}.png'.format(time, suffix), dpi=300)
             plt.savefig('../plots/Predicted_VS_Path_MPI{}{}.pdf'.format(time, suffix), dpi=300)
 
-            plt.show()
-        # Saving the density Vs Residual plots
-        plt.figure()
+        # Saving the density Vs Residual plots and example lollipop plots
+
         for time in timepoints:
             mpi = pd.read_csv('../output/model_output_MPI{}{}.csv'.format(time, suffix))
             mpi = mpi.rename(columns={'Unnamed: 0': 'region'})
-            sns.kdeplot(x='residual', data=mpi, label='{} MPI'.format(time))
-            plt.title("Density(residual) - Conditions{}".format(suffix))
-            plt.legend(title='Timepoints')
 
-        plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}.png'.format(suffix), dpi=300)
-        plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}.png'.format(suffix), dpi=300)
-        plt.show()
+            #Residual distribution
+            plt.figure(figsize=(4, 3), constrained_layout=True)
+            sns.histplot(x='residual', data=mpi, label='{} MPI'.format(time), kde=True, bins=20)
+            plt.xlim(-2, 2)
+            plt.ylim(0, 20)
+            plt.ylabel('Density', fontdict={'size': 16})
+            plt.xlabel('Residuals', fontdict={'size': 16})
+            plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}_MPI{}.png'.format(suffix, time), dpi=300)
+            plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}_MPI{}.png'.format(suffix, time), dpi=300)
+
+            #Lollipop
+            plt.figure(figsize=(4, 3), constrained_layout=True)
+            sns.regplot(x=mpi["ndm_data"], y=mpi["experimental_data"], data=mpi,
+                        scatter_kws={'s': 40}, truncate=False, ci=0)
+            plt.vlines(mpi["ndm_data"], mpi['linreg_data'], mpi['linreg_data'] + mpi['residual'] - 0.04,
+                       lw=0.8, linestyles="dotted", zorder=100)
+
+            plt.xlabel("Log(Predicted)", fontsize=16)
+            plt.ylabel("Log(Path)", fontsize=16)
+            plt.savefig('../plots/Density_vs_residuals/Lollipop_MPI{}{}.png'.format(time, suffix), dpi=300)
+            plt.savefig('../plots/Density_vs_residuals/Lollpop_MPI{}{}.pdf'.format(time, suffix), dpi=300)
 
         stats_df = pd.DataFrame(stats_df)
         # Boneferroni method for correction of pvalues
@@ -187,7 +199,7 @@ class DataManager(object):
             suffix = "_{}".format(self.seed)
         try:
             os.mkdir('../plots/Heatmap_Predictions/')
-        except WindowsError:  # For Mac users need to replace by OSError.
+        except OSError:  # For Mac users need to replace by OSError.
             print("")
 
         patho = pd.read_csv('../output/predicted_pathology{}.csv'.format(suffix))
@@ -231,7 +243,7 @@ class DataManager(object):
             suffix = "_{}".format(self.seed)
         try:
             os.mkdir('../plots/Fits(c)/')
-        except WindowsError:  # For Mac users need to replace by OSError.
+        except OSError:  # For Mac users need to replace by OSError.
             print("")
 
         c_r_table = fitfunctions.extract_c_and_r(log_path=np.log10(self.grp_mean),
@@ -261,7 +273,7 @@ class DataManager(object):
 
         try:
             os.mkdir('../plots/Model_Robustness/')
-        except WindowsError:  # For Mac users need to replace by OSError.
+        except OSError:  # For Mac users need to replace by OSError.
             print("")
 
         Robustness_Stability.random_robustness(self, best_c=best_c, best_r=best_r, exp_data=exp_data,
@@ -280,11 +292,11 @@ class DataManager(object):
             suffix = "_{}".format(self.seed)
         try:
             os.mkdir('../plots/Stab_Grp/')
-        except WindowsError:  # For Mac users need to replace by OSError.
+        except OSError:  # For Mac users need to replace by OSError.
             print("")
         try:
             os.mkdir('../plots/Stab_Grp_Sliding/')
-        except WindowsError:  # For Mac users need to replace by OSError.
+        except OSError:  # For Mac users need to replace by OSError.
             print("")
         _, fit = dm.find_best_c_and_r()
         Robustness_Stability.stability(exp_data=exp_data, connectivity_ipsi=self.connectivity_ipsi,
@@ -304,12 +316,12 @@ class DataManager(object):
 
         try:
             os.mkdir('../plots/Stab_Ind/')
-        except WindowsError:  # For Mac users need to replace by OSError.
+        except OSError:  # For Mac users need to replace by OSError.
             print("")
 
         try:
             os.mkdir('../plots/Stab_Ind_Sliding/')
-        except WindowsError:  # For Mac users need to replace by OSError.
+        except OSError:  # For Mac users need to replace by OSError.
             print("")
         _, fit = dm.find_best_c_and_r()
         Robustness_Stability.stability_individual(exp_data=exp_data, connectivity_ipsi=dm.connectivity_ipsi,
@@ -327,7 +339,7 @@ class DataManager(object):
             suffix = "_{}".format(self.seed)
         try:
             os.mkdir('../plots/Fits(c)/')
-        except WindowsError:  # For Mac users need to replace by OSError.
+        except OSError:  # For Mac users need to replace by OSError.
             print("")
 
         c_r_table = summative_model.extract_c_and_r_iter(log_path=np.log10(self.grp_mean),
@@ -393,8 +405,8 @@ if __name__ == '__main__':
     # Robustness of the model - If ALL TRUE then takes 25 min to run the code
 
     # dm.model_robustness(best_c=c, best_r=r,
-    #                     exp_data=exp_data, timepoints=timepoints,
-    #                     RandomSeed=True, RandomAdja=True, RandomPath=True)
+    #                      exp_data=exp_data, timepoints=timepoints,
+    #                      RandomSeed=True, RandomAdja=True, RandomPath=True)
 
 # Stability
     # Stability of the model --> All animals included
