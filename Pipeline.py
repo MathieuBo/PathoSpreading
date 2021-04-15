@@ -38,7 +38,7 @@ class DataManager(object):
 
         self.grp_mean = process_files.mean_pathology(timepoints=timepoints, path_data=self.path_data)
 
-        self.c_rng = np.linspace(start=0.01, stop=10, num=100)
+        self.c_rng = np.linspace(start=0.01, stop=100, num=1000)
 
         self.use_expression_values = use_expression_values
 
@@ -144,14 +144,19 @@ class DataManager(object):
         for time in timepoints:
             mpi = pd.read_csv('../output/model_output_MPI{}{}.csv'.format(time, suffix))
             mpi = mpi.rename(columns={'Unnamed: 0': 'region'})
-            plt.figure()
+            plt.figure(figsize=(7.4,5.3))
+
+            plt.rc('xtick', labelsize=15)
+            plt.rc('ytick', labelsize=15)
+            plt.tight_layout()
+
             plt.vlines(mpi["ndm_data"], mpi['linreg_data'], mpi['linreg_data'] + mpi['residual'] - 0.04,
                        lw=0.8, color='blue', linestyles="dotted", label="Residual")
             sns.regplot(x=mpi["ndm_data"], y=mpi["experimental_data"], data=mpi,
                         scatter_kws={'s': 40, 'facecolor': 'blue'})
             plt.xlabel("Log(Predicted)", fontsize=18)
             plt.ylabel("Log(Path)", fontsize=18)
-            plt.title("Month Post Injection {} - Conditions{}".format(time, suffix), fontsize=19)
+            #plt.title("Month Post Injection {} - Conditions{}".format(time, suffix), fontsize=19)
             plt.legend()
 
             plt.savefig('../plots/Predicted_VS_Path_MPI{}{}.png'.format(time, suffix), dpi=300)
@@ -249,6 +254,7 @@ class DataManager(object):
             plt.savefig('../plots/Fits(c)/plot_r_(c)_MPI{}{}.png'.format(t, suffix), dpi=300)
             plt.show()
         return c_r_table
+
     # Controls
 
     def model_robustness(self, exp_data, timepoints, best_c, best_r, RandomSeed=False,
@@ -317,7 +323,7 @@ class DataManager(object):
                                                   timepoints=timepoints, c_rng=dm.c_rng, suffix=suffix, r=fit, seed=seed,
                                                   Sliding_Window= Sliding_Window)
 
-# Test
+    # Iterative model
     def extract_c_r_iter(self):
         # Initialization
         if self.use_expression_values:

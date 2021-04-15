@@ -6,9 +6,8 @@ from scipy.linalg import expm
 from scipy.stats import pearsonr, linregress
 import seaborn as sns
 from statsmodels.stats.multitest import multipletests
-
-
 import fitfunctions
+
 
 def extract_c_and_r_iter(log_path, L_out, tp, seed, c_rng, roi_names):
     """
@@ -70,23 +69,6 @@ def extract_c_and_r_iter(log_path, L_out, tp, seed, c_rng, roi_names):
                 idx = np.where(extracted[str(tp[time]), "r"] == np.max(extracted[str(tp[time]), "r"]))[0][0]
                 best_c_per_mpi6 = extracted[str(tp[time]), "c"][idx]
     return extracted
-
-
-# def predict_model_iter(L_out, Xo, c, t=1):
-#
-#     if t == 1:
-#         Xt = np.dot(expm(-L_out * c * t), Xo) + 0
-#         return Xt
-#
-#     if t == 3:
-#         Xt = np.dot(expm(-L_out * c * t), predict_model_iter(L_out, Xo, c, t - 2)) + predict_model_iter(L_out, Xo, c,
-#                                                                                                       t - 2)
-#         return Xt
-#
-#     if t == 6:
-#         Xt = np.dot(expm(-L_out * c * t), predict_model_iter(L_out, Xo, c, t - 3)) + predict_model_iter(L_out, Xo, c,
-#                                                                                                       t - 3)
-#         return Xt
 
 def predict_pathology_iter(self, timepoints):
     # Initialization
