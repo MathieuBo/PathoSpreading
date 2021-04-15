@@ -15,7 +15,7 @@ It requires the following packages:
 - scipy
 - tqdm
 - statsmodels
-- 
+
 ## Datasets
 All data are contained in the folder Data83018. The essential files are the following ones:
 - data.csv [37rowsx118columns]
