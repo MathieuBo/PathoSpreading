@@ -14,9 +14,18 @@ import fitfunctions
 import Robustness_Stability
 import summative_model
 
-#Plot settings
+# Plot settings
 plt.rc('xtick', labelsize=14)
 plt.rc('ytick', labelsize=14)
+
+# Directories creation
+os.makedirs("../output", exist_ok=True)
+os.makedirs("../plots", exist_ok=True)
+directories = ["Density_vs_residuals", "Heatmap_Predictions", "Fits(c)",
+               "Model_Robustness", "Stab_Grp", "Stab_Ind", "Stab_Ind_Sliding"]
+for directory in directories:
+    os.makedirs("../directory_test/plots/{}".format(directory), exist_ok=True)
+
 
 class DataManager(object):
     # Initialization
@@ -104,10 +113,6 @@ class DataManager(object):
             suffix = "_{}{}".format(self.seed, gene_exp)
         else:
             suffix = "_{}".format(self.seed)
-        try:
-            os.mkdir('../plots/Density_vs_residuals/')
-        except OSError:  # For Mac users need to replace by OSError.
-            print("")
 
         stats_df = []
         masks = dict()
@@ -161,7 +166,7 @@ class DataManager(object):
             mpi = pd.read_csv('../output/model_output_MPI{}{}.csv'.format(time, suffix))
             mpi = mpi.rename(columns={'Unnamed: 0': 'region'})
 
-            #Residual distribution
+            # Residual distribution
             plt.figure(figsize=(4, 3), constrained_layout=True)
             sns.histplot(x='residual', data=mpi, label='{} MPI'.format(time), kde=True, bins=20)
             plt.xlim(-2, 2)
@@ -171,7 +176,7 @@ class DataManager(object):
             plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}_MPI{}.png'.format(suffix, time), dpi=300)
             plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}_MPI{}.png'.format(suffix, time), dpi=300)
 
-            #Lollipop
+            # Lollipop
             plt.figure(figsize=(4, 3), constrained_layout=True)
             sns.regplot(x=mpi["ndm_data"], y=mpi["experimental_data"], data=mpi,
                         scatter_kws={'s': 40}, truncate=False, ci=0)
@@ -197,10 +202,6 @@ class DataManager(object):
             suffix = "_{}{}".format(self.seed, gene_exp)
         else:
             suffix = "_{}".format(self.seed)
-        try:
-            os.mkdir('../plots/Heatmap_Predictions/')
-        except OSError:  # For Mac users need to replace by OSError.
-            print("")
 
         patho = pd.read_csv('../output/predicted_pathology{}.csv'.format(suffix))
 
@@ -241,10 +242,6 @@ class DataManager(object):
             suffix = "_{}{}".format(self.seed, gene_exp)
         else:
             suffix = "_{}".format(self.seed)
-        try:
-            os.mkdir('../plots/Fits(c)/')
-        except OSError:  # For Mac users need to replace by OSError.
-            print("")
 
         c_r_table = fitfunctions.extract_c_and_r(log_path=np.log10(self.grp_mean),
                                                  L_out=self.l_out,
@@ -272,11 +269,6 @@ class DataManager(object):
         else:
             suffix = "_{}".format(self.seed)
 
-        try:
-            os.mkdir('../plots/Model_Robustness/')
-        except OSError:  # For Mac users need to replace by OSError.
-            print("")
-
         Robustness_Stability.random_robustness(self, best_c=best_c, best_r=best_r, exp_data=exp_data,
                                                timepoints=timepoints,
                                                RandomSeed=RandomSeed, RandomAdja=RandomAdja, RandomPath=RandomPath,
@@ -291,20 +283,12 @@ class DataManager(object):
             suffix = "_{}{}".format(self.seed, gene_exp)
         else:
             suffix = "_{}".format(self.seed)
-        try:
-            os.mkdir('../plots/Stab_Grp/')
-        except OSError:  # For Mac users need to replace by OSError.
-            print("")
-        try:
-            os.mkdir('../plots/Stab_Grp_Sliding/')
-        except OSError:  # For Mac users need to replace by OSError.
-            print("")
+
         _, fit = dm.find_best_c_and_r()
         Robustness_Stability.stability(exp_data=exp_data, connectivity_ipsi=self.connectivity_ipsi,
                                        connectivity_contra=self.connectivity_contra, nb_region=nb_region,
                                        timepoints=timepoints, c_rng=self.c_rng, r=fit, Sliding_Window=Sliding_Window,
                                        suffix=suffix, seed=seed)
-
 
     def plot_individual_stability(self, exp_data, Sliding_Window=None):
         # Initialization
@@ -315,20 +299,12 @@ class DataManager(object):
         else:
             suffix = "_{}".format(self.seed)
 
-        try:
-            os.mkdir('../plots/Stab_Ind/')
-        except OSError:  # For Mac users need to replace by OSError.
-            print("")
-
-        try:
-            os.mkdir('../plots/Stab_Ind_Sliding/')
-        except OSError:  # For Mac users need to replace by OSError.
-            print("")
         _, fit = dm.find_best_c_and_r()
         Robustness_Stability.stability_individual(exp_data=exp_data, connectivity_ipsi=dm.connectivity_ipsi,
                                                   connectivity_contra=dm.connectivity_contra, nb_region=nb_region,
-                                                  timepoints=timepoints, c_rng=dm.c_rng, suffix=suffix, r=fit, seed=seed,
-                                                  Sliding_Window= Sliding_Window)
+                                                  timepoints=timepoints, c_rng=dm.c_rng, suffix=suffix, r=fit,
+                                                  seed=seed,
+                                                  Sliding_Window=Sliding_Window)
 
     # Iterative model
     def extract_c_r_iter(self):
@@ -338,18 +314,16 @@ class DataManager(object):
             suffix = "_{}{}".format(self.seed, gene_exp)
         else:
             suffix = "_{}".format(self.seed)
-        try:
-            os.mkdir('../plots/Fits(c)/')
-        except OSError:  # For Mac users need to replace by OSError.
-            print("")
 
         c_r_table = summative_model.extract_c_and_r_iter(log_path=np.log10(self.grp_mean),
-                                                 L_out=self.l_out,
-                                                 tp=timepoints,
-                                                 seed=self.seed,
-                                                 c_rng=self.c_rng,
-                                                 roi_names=self.ROInames)
+                                                         L_out=self.l_out,
+                                                         tp=timepoints,
+                                                         seed=self.seed,
+                                                         c_rng=self.c_rng,
+                                                         roi_names=self.ROInames)
         return c_r_table
+
+
 if __name__ == '__main__':
     # DataFrame with header, pS129-alpha-syn quantified in each brain region
 
@@ -369,10 +343,10 @@ if __name__ == '__main__':
 # Load data
 
     dm = DataManager(exp_data=exp_data,
-                     synuclein=synuclein,
-                     timepoints=timepoints,
-                     seed=seed,
-                     use_expression_values=use_expression_values)
+                 synuclein=synuclein,
+                 timepoints=timepoints,
+                 seed=seed,
+                 use_expression_values=use_expression_values)
 
 # Main Functions
     # Computation of the Laplacian
@@ -385,22 +359,22 @@ if __name__ == '__main__':
 
     # Predict pathology
 
-    predicted_pathology = dm.predict_pathology(c_Grp=c)
+    # predicted_pathology = dm.predict_pathology(c_Grp=c)
 
     # Predict pathology with the iterative model
-    #dm.predict_iterative()
+    # dm.predict_iterative()
 
-# Main outputs of the model; Output_table - Predicted_Vs_Pathology - Density_Vs_Residuals
+    # Main outputs of the model; Output_table - Predicted_Vs_Pathology - Density_Vs_Residuals
 
-    dm.compute_outputs_and_graphs(Xt_Grp=predicted_pathology)
+    # dm.compute_outputs_and_graphs(Xt_Grp=predicted_pathology)
 
     # Predicted heatmap
 
-    #dm.predicted_heatmap(Drop_Seed=True)
+    # dm.predicted_heatmap(Drop_Seed=True)
 
     # Plotting r(c) for each MPI
 
-    #c_r_table = dm.plotting_r_function_of_c()
+    # c_r_table = dm.plotting_r_function_of_c()
 
 # Controls
     # Robustness of the model - If ALL TRUE then takes 25 min to run the code
@@ -409,11 +383,11 @@ if __name__ == '__main__':
     #                      exp_data=exp_data, timepoints=timepoints,
     #                      RandomSeed=True, RandomAdja=True, RandomPath=True)
 
-# Stability
     # Stability of the model --> All animals included
 
-    #dm.compute_stability(Sliding_Window=None)
+    # dm.compute_stability(Sliding_Window=None)
 
     # Stability of the model --> Individuals
 
-    #dm.plot_individual_stability(exp_data=exp_data, Sliding_Window=4)
+    # dm.plot_individual_stability(exp_data=exp_data, Sliding_Window=4)
+

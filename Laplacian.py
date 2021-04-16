@@ -13,7 +13,7 @@ def get_laplacian(adj_mat, expression_data=None, return_in_degree=False):
         (optional): in_degree_laplacian: in degree laplacian matrix
     """
 
-    # Conversion to numpy ########
+    # Conversion to numpy
     adj_mat = adj_mat.values
 
     # Calculation of laplacian
