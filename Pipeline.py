@@ -18,7 +18,7 @@ import summative_model
 plt.rc('xtick', labelsize=14)
 plt.rc('ytick', labelsize=14)
 
-# Directories creation
+# Directories creation in the working directory
 os.makedirs("../output", exist_ok=True)
 os.makedirs("../plots", exist_ok=True)
 directories = ["Density_vs_residuals", "Heatmap_Predictions", "Fits(c)",
