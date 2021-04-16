@@ -21,11 +21,11 @@ plt.rc('ytick', labelsize=14)
 # Directories creation in the working directory
 os.makedirs("../output", exist_ok=True)
 os.makedirs("../plots", exist_ok=True)
+os.makedirs("../Iterative_Model/plots/Density_vs_residuals", exist_ok=True)
 directories = ["Density_vs_residuals", "Heatmap_Predictions", "Fits(c)",
                "Model_Robustness", "Stab_Grp", "Stab_Ind", "Stab_Ind_Sliding"]
 for directory in directories:
-    os.makedirs("../directory_test/plots/{}".format(directory), exist_ok=True)
-
+    os.makedirs("../plots/{}".format(directory), exist_ok=True)
 
 class DataManager(object):
     # Initialization
@@ -359,10 +359,10 @@ if __name__ == '__main__':
 
     # Predict pathology
 
-    # predicted_pathology = dm.predict_pathology(c_Grp=c)
+    predicted_pathology = dm.predict_pathology(c_Grp=c)
 
     # Predict pathology with the iterative model
-    # dm.predict_iterative()
+    dm.predict_iterative()
 
     # Main outputs of the model; Output_table - Predicted_Vs_Pathology - Density_Vs_Residuals
 

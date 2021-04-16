@@ -160,8 +160,8 @@ def predict_pathology_iter(self, timepoints):
         plt.title("Iterative Model - Month Post Injection {} - Conditions{}".format(time, suffix))
         plt.legend()
 
-        plt.savefig('../Iterative_Model/iter_Predicted_VS_Path_MPI{}{}.png'.format(time, suffix), dpi=300)
-        plt.savefig('../Iterative_Model/iter_Predicted_VS_Path_MPI{}{}.pdf'.format(time, suffix), dpi=300)
+        plt.savefig('../Iterative_Model/plots/iter_Predicted_VS_Path_MPI{}{}.png'.format(time, suffix), dpi=300)
+        plt.savefig('../Iterative_Model/plots/iter_Predicted_VS_Path_MPI{}{}.pdf'.format(time, suffix), dpi=300)
 
         plt.show()
     # Saving the density Vs Residual plots
@@ -173,8 +173,8 @@ def predict_pathology_iter(self, timepoints):
         plt.title("Iterative Model - Density(residual) - Conditions{}".format(suffix))
         plt.legend(title='Timepoints')
 
-    plt.savefig('../Iterative_Model/Density_VS_residual{}.png'.format(suffix), dpi=300)
-    plt.savefig('../Iterative_Model/Density_VS_residual{}.png'.format(suffix), dpi=300)
+    plt.savefig('../Iterative_Model/plots/Density_vs_residuals/Density_VS_residual{}.png'.format(suffix), dpi=300)
+    plt.savefig('../Iterative_Model/plots/Density_vs_residuals/Density_VS_residual{}.png'.format(suffix), dpi=300)
     plt.show()
 
     stats_df = pd.DataFrame(stats_df)
