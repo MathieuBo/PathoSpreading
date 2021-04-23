@@ -8,6 +8,7 @@ from statsmodels.stats.multitest import multipletests
 
 np.seterr(divide='ignore')  # Hide Runtime warning regarding log(0) = -inf
 
+import Henrich_processing
 import process_files
 import Laplacian
 import fitfunctions
@@ -19,6 +20,7 @@ plt.rc('xtick', labelsize=14)
 plt.rc('ytick', labelsize=14)
 
 # Directories creation in the working directory
+os.chdir('C:\\Users\\thoma\\Documents\\M1_Neurasmus\\NeuroBIM_M1\\Internship\\Henrich_et_al_Data\\Final_Files')
 os.makedirs("../output", exist_ok=True)
 os.makedirs("../plots", exist_ok=True)
 os.makedirs("../Iterative_Model/plots/Density_vs_residuals", exist_ok=True)
@@ -29,28 +31,33 @@ for directory in directories:
 
 class DataManager(object):
     # Initialization
-    def __init__(self, exp_data, synuclein, timepoints, seed, use_expression_values=None):
+    def __init__(self, exp_data, synuclein, timepoints, seed, condition, use_expression_values=None):
 
         self.seed = seed
-
+        self.condition = condition
         # Connectivity tables
-        self.connectivity_ipsi = pd.read_csv("./Data83018/connectivity_ipsi.csv", index_col=0)
+        self.connectivity_ipsi = pd.read_csv("./Connectivity_Map_Henrich_ipsi.csv",
+                                            header=0, index_col=0)
 
-        self.connectivity_contra = pd.read_csv("./Data83018/connectivity_contra.csv", index_col=0)
+        self.connectivity_contra = pd.read_csv("./Connectivity_Map_Henrich_contra.csv",
+                                              header=0, index_col=0)
 
-        self.W, self.path_data, self.conn_names, self.ROInames = process_files.process_pathdata(exp_data=exp_data,
+        self.W, self.path_data, self.conn_names, self.ROInames = Henrich_processing.process_pathdata(exp_data=exp_data,
                                                                                                 connectivity_contra=self.connectivity_contra,
-                                                                                                connectivity_ipsi=self.connectivity_ipsi)
+                                                                                                connectivity_ipsi=self.connectivity_ipsi,
+                                                                                                condition=self.condition)
 
         self.synuclein = process_files.process_gene_expression_data(expression=synuclein, roi_names=self.ROInames)
 
         self.timepoints = timepoints
 
+        self.condition = condition
+
         self.l_out = None
 
-        self.grp_mean = process_files.mean_pathology(timepoints=timepoints, path_data=self.path_data)
+        #self.grp_mean removed in that code
 
-        self.c_rng = np.linspace(start=0.01, stop=100, num=1000)
+        self.c_rng = np.linspace(start=0.01, stop=10, num=100)
 
         self.use_expression_values = use_expression_values
 
@@ -72,7 +79,7 @@ class DataManager(object):
 
     def find_best_c_and_r(self):
 
-        c_Grp, r = fitfunctions.c_fit(log_path=np.log10(self.grp_mean),
+        c_Grp, r = fitfunctions.c_fit(log_path=np.log10(self.path_data),
                                       L_out=self.l_out,
                                       tp=timepoints,
                                       seed=self.seed,
@@ -86,9 +93,9 @@ class DataManager(object):
         # Initialization
         if self.use_expression_values:
             gene_exp = '_SNCA'
-            suffix = "_{}{}".format(self.seed, gene_exp)
+            suffix = "_{}_{}_{}".format(self.seed, condition, gene_exp)
         else:
-            suffix = "_{}".format(self.seed)
+            suffix = "_{}_{}".format(self.seed, condition)
 
         Xo = fitfunctions.make_Xo(ROI=self.seed, ROInames=self.ROInames)
 
@@ -96,23 +103,23 @@ class DataManager(object):
 
         Xt_Grp = [fitfunctions.predict_Lout(self.l_out, Xo, c_Grp, i) for i in timepoints]
 
-        data_to_export = pd.DataFrame(np.transpose(Xt_Grp), columns=['MPI{}'.format(i) for i in timepoints])
+        data_to_export = pd.DataFrame(np.transpose(Xt_Grp), columns=['WPI{}'.format(i) for i in timepoints])
         data_to_export['regions'] = self.ROInames
-        data_to_export.to_csv('../output/predicted_pathology{}.csv'.format(suffix))
+        data_to_export.to_csv('../output/predicted_pathology{}.csv'.format(suffix)) # condition added
 
         return Xt_Grp
 
     def predict_iterative(self):
         summative_model.predict_pathology_iter(self=self, timepoints=timepoints)
 
-    def compute_outputs_and_graphs(self, Xt_Grp):
+    def compute_outputs_and_graphs(self, Xt_Grp): #Modif suffix + MPI --> WPI
 
         # Initialization
         if self.use_expression_values:
             gene_exp = '_SNCA'
-            suffix = "_{}{}".format(self.seed, gene_exp)
+            suffix = "_{}_{}_{}".format(self.seed, condition, gene_exp)
         else:
-            suffix = "_{}".format(self.seed)
+            suffix = "_{}_{}".format(self.seed, condition)
 
         stats_df = []
         masks = dict()
@@ -120,23 +127,23 @@ class DataManager(object):
         print('----------------NON-ITERATIVE MODEL----------------')
         print('---------------------------------------------------\n')
         for M in range(0, len(timepoints)):
-            Df = pd.DataFrame({"experimental_data": np.log10(self.grp_mean.iloc[:, M]).values,
+            Df = pd.DataFrame({"experimental_data": np.log10(self.path_data.iloc[:, M]).values,
                                "ndm_data": np.log10(Xt_Grp[M])},
-                              index=self.grp_mean.index)  # Runtime Warning
+                              index=self.path_data.index)  # Runtime Warning
             # exclude regions with 0 pathology at each time point for purposes of computing fit
             mask = (Df["experimental_data"] != -np.inf) & (Df['ndm_data'] != -np.inf) & (Df['ndm_data'] != np.nan)
 
             masks["MPI %s" % timepoints[M]] = mask
             Df = Df[mask]
 
-            cor = {"MPI": "%s" % (M),
+            cor = {"WPI": "%s" % (M), # MPI --> WPI
                    "Pearson r": pearsonr(Df["experimental_data"], Df["ndm_data"])[0],
                    "p_value": pearsonr(Df["experimental_data"], Df["ndm_data"])[1]}
 
             stats_df.append(cor)
 
             print('---------------------------------------------------')
-            print("Month Post Injection %s" % timepoints[M])
+            print("Week Post Injection %s" % timepoints[M]) # Month --> WPI
             print("Number of Regions used: ", Df.shape[0])
             print("Pearson correlation coefficient", cor['Pearson r'])
             print('Pvalue (non corrected)', cor['p_value'])
@@ -146,35 +153,35 @@ class DataManager(object):
             Df['linreg_data'] = slope * Df['ndm_data'] + intercept
             Df['residual'] = Df['experimental_data'] - Df['linreg_data']
             # Saving the data as csv
-            Df.to_csv('../output/model_output_MPI{}{}.csv'.format(timepoints[M], suffix))
+            Df.to_csv('../output/model_output_WPI{}{}.csv'.format(timepoints[M], suffix))
 
         # Saving the scatter plots
         for time in timepoints:
-            mpi = pd.read_csv('../output/model_output_MPI{}{}.csv'.format(time, suffix))
+            mpi = pd.read_csv('../output/model_output_WPI{}{}.csv'.format(time, suffix))
             mpi = mpi.rename(columns={'Unnamed: 0': 'region'})
             plt.figure(figsize=(4, 3), constrained_layout=True)
             sns.regplot(x=mpi["ndm_data"], y=mpi["experimental_data"], data=mpi,
                         scatter_kws={'s': 40}, truncate=False)
             plt.xlabel("Log(Predicted)", fontsize=16)
             plt.ylabel("Log(Path)", fontsize=16)
-            plt.savefig('../plots/Predicted_VS_Path_MPI{}{}.png'.format(time, suffix), dpi=300)
-            plt.savefig('../plots/Predicted_VS_Path_MPI{}{}.pdf'.format(time, suffix), dpi=300)
+            plt.savefig('../plots/Predicted_VS_Path_WPI{}{}.png'.format(time, suffix), dpi=300)
+            plt.savefig('../plots/Predicted_VS_Path_WPI{}{}.pdf'.format(time, suffix), dpi=300)
 
         # Saving the density Vs Residual plots and example lollipop plots
 
         for time in timepoints:
-            mpi = pd.read_csv('../output/model_output_MPI{}{}.csv'.format(time, suffix))
+            mpi = pd.read_csv('../output/model_output_WPI{}{}.csv'.format(time, suffix))
             mpi = mpi.rename(columns={'Unnamed: 0': 'region'})
 
             # Residual distribution
             plt.figure(figsize=(4, 3), constrained_layout=True)
-            sns.histplot(x='residual', data=mpi, label='{} MPI'.format(time), kde=True, bins=20)
+            sns.histplot(x='residual', data=mpi, label='{} WPI'.format(time), kde=True, bins=20)
             plt.xlim(-2, 2)
             plt.ylim(0, 20)
             plt.ylabel('Density', fontdict={'size': 16})
             plt.xlabel('Residuals', fontdict={'size': 16})
-            plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}_MPI{}.png'.format(suffix, time), dpi=300)
-            plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}_MPI{}.png'.format(suffix, time), dpi=300)
+            plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}_WPI{}.png'.format(suffix, time), dpi=300)
+            plt.savefig('../plots/Density_vs_residuals/density_VS_residual{}_WPI{}.png'.format(suffix, time), dpi=300)
 
             # Lollipop
             plt.figure(figsize=(4, 3), constrained_layout=True)
@@ -185,8 +192,8 @@ class DataManager(object):
 
             plt.xlabel("Log(Predicted)", fontsize=16)
             plt.ylabel("Log(Path)", fontsize=16)
-            plt.savefig('../plots/Density_vs_residuals/Lollipop_MPI{}{}.png'.format(time, suffix), dpi=300)
-            plt.savefig('../plots/Density_vs_residuals/Lollpop_MPI{}{}.pdf'.format(time, suffix), dpi=300)
+            plt.savefig('../plots/Density_vs_residuals/Lollipop_WPI{}{}.png'.format(time, suffix), dpi=300)
+            plt.savefig('../plots/Density_vs_residuals/Lollpop_WPI{}{}.pdf'.format(time, suffix), dpi=300)
 
         stats_df = pd.DataFrame(stats_df)
         # Boneferroni method for correction of pvalues
@@ -328,14 +335,16 @@ if __name__ == '__main__':
 
     # DataFrame with header, pS129-alpha-syn quantified in each brain region
 
-    exp_data = pd.read_csv("./Data83018/data.csv", header=0)
+    exp_data = pd.read_csv("./Henrich_data_processed.csv")
 
-    synuclein = pd.read_csv("./Data83018/SncaExpression.csv", index_col=0,
+    synuclein = pd.read_csv("C:\\Users\\thoma\\Documents\\M1_Neurasmus\\NeuroBIM_M1\\Internship\\GitRepo\\PathoSpreading\\Data83018\\SncaExpression.csv", index_col=0,
                             header=None)  # Gene Expression ==> Generalization
 
-    timepoints = [1, 3, 6]
+    timepoints = [1, 6, 12]
 
-    seed = "iCPu"
+    seed = "iPPN"
+
+    condition = "WHOLE"
 
     use_expression_values = False
 
@@ -346,6 +355,7 @@ if __name__ == '__main__':
                      synuclein=synuclein,
                      timepoints=timepoints,
                      seed=seed,
+                     condition=condition,
                      use_expression_values=use_expression_values)
 
 # Main Functions
@@ -366,8 +376,9 @@ if __name__ == '__main__':
 
     # Main outputs of the model; Output_table - Predicted_Vs_Pathology - Density_Vs_Residuals
 
-    # dm.compute_outputs_and_graphs(Xt_Grp=predicted_pathology)
+    dm.compute_outputs_and_graphs(Xt_Grp=predicted_pathology)
 
+#SUPPLEMENTARY --> Not used yet + Will probably need some modification to be working
     # Predicted heatmap
 
     # dm.predicted_heatmap(Drop_Seed=True)

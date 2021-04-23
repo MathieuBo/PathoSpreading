@@ -126,7 +126,7 @@ def mean_pathology(timepoints, path_data):
 
     mice = []
     for time in timepoints:  # Creation of a list of 3 panda dataframe. These 3 df correspond to the 3 tp
-        l = path_data[path_data['Time post-injection (months)'] == time][path_data['Conditions'] == 'NTG'][
+        l = path_data[path_data[path_data.columns[0]] == time][path_data[path_data.columns[1]] == 'NTG'][
             path_data.columns[2::]]
         l = l.reset_index(drop=True)
         # Reset the index, drop = True is used to remove the old index as it is by default added as a column
@@ -157,7 +157,7 @@ def ind_pathology(timepoints, path_data):
     ind_grp = pd.DataFrame()
     for idx, time in enumerate(
             timepoints):  # Creation of a list of 3 panda dataframe. These 3 df correspond to the 3 tp
-        l = path_data[path_data['Time post-injection (months)'] == time][path_data['Conditions'] == 'NTG'][
+        l = path_data[path_data[path_data.columns[0]] == time][path_data[path_data.columns[1]] == 'NTG'][
             path_data.columns[2::]]
         l = l.reset_index(drop=True)
         multi_array = [["{}".format(time) for k in range(0, len(l))],

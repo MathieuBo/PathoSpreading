@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.linalg import expm
 from scipy import stats
+from tqdm import tqdm
 import pandas as pd
 
 # Functions
@@ -66,7 +67,8 @@ def c_fit(log_path, L_out, tp, seed, c_rng, roi_names):
     mask = log_path != -np.inf
     # Compute fit at each time point for range of time
     reg = []
-    for time in range(0, len(tp)):
+    print("Loading best fit for each timepoint")
+    for time in tqdm(range(0, len(tp))):
 
         for c_idx, c in enumerate(c_rng):
             exp_val = log_path.iloc[:, time][mask.iloc[:, time]].values
