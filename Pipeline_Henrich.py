@@ -344,7 +344,7 @@ if __name__ == '__main__':
 
     seed = "iPPN"
 
-    condition = "WHOLE"
+    condition = "WHOLE" # "Neurite", "SOMA", "WHOLE" (Sum SOMA + Neurite)
 
     use_expression_values = False
 
