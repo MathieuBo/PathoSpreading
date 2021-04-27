@@ -50,7 +50,7 @@ class DataManager(object):
 
         self.grp_mean = process_files.mean_pathology(timepoints=timepoints, path_data=self.path_data)
 
-        self.c_rng = np.linspace(start=0.01, stop=100, num=1000)
+        self.c_rng = np.linspace(start=0.01, stop=10, num=100)
 
         self.use_expression_values = use_expression_values
 
