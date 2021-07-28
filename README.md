@@ -52,7 +52,7 @@ In the folder "plots"
 				       --> Lollipop_MPI{timepoint}_{seed}.png/.pdf : Lollipop plots showing the predicted vs pathology data.
 - In the folder "Fits(c)" --> plot_r_(c)_MPI{timepoint}_{seed}.png/.pdf : Plots of the evolution of r with respect to c for a specific timepoint.
 
-- In the folder "Heatmap_Predictions" --> Predictions_{seed}.png/.pdf Heatmap with normalized values of predicted pathology. By default ```Drop_seed : False```. If True then it drops the seed region from the Heatmap and plots to allow a better dynamic range in visualization. 
+- In the folder "Heatmap_Predictions" --> Predictions_{seed}.png/.pdf Heatmap with normalized values of predicted pathology. By default ```Drop_seed : True```, allowing to drop the seeded region from the heatmap toget a better dynamic range in visualization. 
 Predictions_{seed}_excluded{seed}.png/.pdf.
 
 - In the folder "Model_Robustness" --> Random_Seed/Random_patho/Random_Adja.png/.pdf : Plots of the the fits obtained when we used different controls.
