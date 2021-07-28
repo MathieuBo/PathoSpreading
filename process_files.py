@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+
 def process_pathdata(exp_data, connectivity_ipsi, connectivity_contra):
 
     """
@@ -20,7 +21,8 @@ def process_pathdata(exp_data, connectivity_ipsi, connectivity_contra):
         ROI_names --> ordered list of iRegions and then cRegions
     """
     conn_names = [i.split(' (')[0] for i in connectivity_contra.columns]
-        # Extract the name of the brain regions but not the subregions
+
+    # Extract the name of the brain regions but not the subregions
     path_names = exp_data.columns[2::]
 
     c_path_names_contra = [path_names[i] for i in range(0, len(path_names)) if
@@ -55,30 +57,29 @@ def process_pathdata(exp_data, connectivity_ipsi, connectivity_contra):
                       axis=1)
 
     path_data = path_data.rename(columns={"MBSC Region": "Conditions"})  # Renaming a column
+
     #Reorganizing so that the seed "iCPu" is the first column
-
-
     # tile matrix such that sources are rows, columns are targets (Oh et al. 2014 Fig 4)
-    connectivity_ipsi.columns = conn_names  # Sets the names of the columns and the index to be the same using the list conn_names
-    connectivity_ipsi.index = conn_names  #
+    connectivity_ipsi.columns = conn_names
+    # Sets the names of the columns and the index to be the same using the list conn_names
+    connectivity_ipsi.index = conn_names
 
     connectivity_contra.columns = conn_names
     connectivity_contra.index = conn_names
-
 
     W = pd.concat([pd.concat([connectivity_ipsi, connectivity_contra], axis=1),
                    pd.concat([connectivity_contra, connectivity_ipsi], axis=1)], axis=0)
 
     # Checking if the matrix was tiled properly
-    if (((W.iloc[0:57, 0:57] != W.iloc[0:57, 0:57]).sum()).sum() > 0):  # Summing over columns and then rows
+    if ((W.iloc[0:57, 0:57] != W.iloc[0:57, 0:57]).sum()).sum() > 0:  # Summing over columns and then rows
         print("!!! Adjacency matrix: failed concatenation !!!")  # If False the double sum equals 0
     else:
         print('Adjacency matrix: successful concatenation')
 
     # retain indices to reorder like original data variable for plotting on mouse brains
     ROInames = ["i" + i for i in conn_names] + ["c" + i for i in conn_names]
-            # List of ROI w/ first the contro regions and then the ipsi regions.
 
+    # List of ROI w/ first the contro regions and then the ipsi regions.
     orig_order = []
     for i in range(0, len(ROInames)):  # Reordering according to ROInames
         for k in range(0, len(exp_data.columns._index_data) - 2):
@@ -126,7 +127,7 @@ def mean_pathology(timepoints, path_data):
 
     mice = []
     for time in timepoints:  # Creation of a list of 3 panda dataframe. These 3 df correspond to the 3 tp
-        l = path_data[path_data[path_data.columns[0]] == time][path_data[path_data.columns[1]] == 'NTG'][
+        l = path_data[(path_data[path_data.columns[0]] == time) & (path_data[path_data.columns[1]] == 'NTG')][
             path_data.columns[2::]]
         l = l.reset_index(drop=True)
         # Reset the index, drop = True is used to remove the old index as it is by default added as a column
@@ -139,33 +140,3 @@ def mean_pathology(timepoints, path_data):
     grp_mean.columns = ["MPI {}".format(i) for i in timepoints]
 
     return grp_mean
-
-def ind_pathology(timepoints, path_data):
-    """
-    Process experimental data to return individual pathology mean
-    ---
-    Inputs:
-        timepoints: list of experimental timepoints
-        path_data: path_data created in process_path_data. Contains the pathology data quantified.
-    ---
-    Outputs:
-        ind_grp: Multi-index Dataframe: first column index (1,3,6) (MPI), second column index (1,2,3,...)
-        (Number of animals used) to call a specific column ==> ind_grp.loc[:, ('1', '1')]
-        multi_index: Returns the MultiIndex Dataframe
-    """
-    mice = []
-    ind_grp = pd.DataFrame()
-    for idx, time in enumerate(
-            timepoints):  # Creation of a list of 3 panda dataframe. These 3 df correspond to the 3 tp
-        l = path_data[path_data[path_data.columns[0]] == time][path_data[path_data.columns[1]] == 'NTG'][
-            path_data.columns[2::]]
-        l = l.reset_index(drop=True)
-        multi_array = [["{}".format(time) for k in range(0, len(l))],
-                       ["{}".format(k + 1) for k in range(0, len(l))]]
-        tuples = list(zip(*multi_array))
-        multi_index = pd.MultiIndex.from_tuples(tuples, names=["MPI", "Mouse"])
-        l = l.transpose()
-        l.columns = multi_index
-        mice.append(l)  # list of Dataframe
-        ind_grp = pd.concat([ind_grp, mice[idx]], axis=1)
-    return ind_grp

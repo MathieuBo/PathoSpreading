@@ -17,7 +17,7 @@ It requires the following packages:
 - statsmodels
 
 ## Datasets
-All data are contained in the folder Data83018. The essential files are the following ones:
+All data are contained in the folder Data83018. The files are the following ones:
 - data.csv [37rowsx118columns]
 - connectivity_ipsi.csv [58rowsx58columns]
 - connectivity_contra.csv [58rowsx58columns]
@@ -29,36 +29,33 @@ All data are contained in the folder Data83018. The essential files are the foll
 This is the main file allowing to control and run the model. Several functions have been implemented to allow to run the model it is simple version or combining expression values. It also allows to run some robustness tests. 
 
 Main *inputs*:
+- output_path: The path where to save all outputs
 - exp_data: Quantification of alpha-synuclein pathology (values from data.csv)
 - timepoints: by default [1,3,6]. Can be modified when changing the experimental data set.
 - connectivity_ipsi.csv & connectivity_contra.csv: connectivity matrices obtained from [Oh et al. 2014](https://www.nature.com/articles/nature13186)
 - synuclein: Energy (i.e. expression) values found in SncaExpression.csv. By defaut ```use_expression_values= False```. 
 - seed: seeding region. By default: iCPu. If the seed is not found in seed list returns [ERROR in make_Xo].
-- nb_of_region: by default: 58 (maximum value). Used the compute the robustness of the model.
+- nb_of_region: by default: 58 (maximum value). Used to compute the robustness of the model.
 
 Main *outputs*:
-The main outputs are saved in two main folders.
-In the folder "output":
-- predicted_pathology{seed}.csv: CSV table with the predicted pathology values for each timepoint.
+All different outputs are stored in a main folder named PathoSpreading_OUTPUT.
+According to the initial conditions (choice of a seed and use -or not- of the expression values) the algorithm produces an specific ouput folder named {seed} or {seed_SNCA} that contains two main folders:
+
+In the folder "Tables":
+- predicted_pathology{seed}{timepoint}.csv: CSV table with the predicted pathology values for each timepoint.
 - model_output_MPI{timepoint}{seed}.csv: CSV table that contains the results of the linear regression for a specific timepoint.
 - stats{seed}.csv: Contains for each timepoint the Pearson's r coefficient, the p-value and the corrected p-value. (Bonferroni's correction)
 
 In the folder "plots"
-- Predicted_VS_Path_MPI{timepoint}{seed}.png/.pdf: lollipop plots showing the predicted vs pathology data.
-- density_VS_residual{seed}.png/.pdf: Density plots of the residuals for a specific seed.
-- predicted_pathology{seed}.csv: Heatmap with normalized values of predicted pathology. By default ```Drop_seed : False```. If True then it drops the seed region from the Heatmap and plots to allow a better dynamic range in visualization. Predictions_{seed}_excluded{seed}.png/.pdf.
-- plot_r_(c)_MPI{timepoint}{seed}.png/.pdf: Plots of the evolution of r with respect to c
-for a specific timepoint.
-- Random_Seed/Random_patho/Random_Adja.png/.pdf: Plots of the the fits obtained when we used different controls.
-- Stability_MPI{timepoint}{seed}.png/.pdf: Graph used to compute the minimal regions needed to obtain a stable fit r
-- Mean_MPI{timepoint}_SW{Sliding_number}{seed}.png/.pdf: Same as before but when computing a mean with a Sliding
-window.
-- SD_MPI{timepoint}_SW{Sliding_number}{seed}.png/.pdf: Same as before but when computing a Standard Deviation 
-with a Sliding window.
+- Predicted_VS_Path_MPI{timepoint}_{seed}.png/.pdf: Scatterplots showing the predicted vs pathology data.
+- In the folder "Density_vs_residuals" --> density_VS_residual{seed}_MPI{timepoint}.png/.pdf: Density plots of the residuals for a specific seed.
+				       --> Lollipop_MPI{timepoint}_{seed}.png/.pdf : Lollipop plots showing the predicted vs pathology data.
+- In the folder "Fits(c)" --> plot_r_(c)_MPI{timepoint}_{seed}.png/.pdf : Plots of the evolution of r with respect to c for a specific timepoint.
 
-The same tables and figures are also produced when running the scripts for the Iterative model or considering
-each mouse individually.
+- In the folder "Heatmap_Predictions" --> Predictions_{seed}.png/.pdf Heatmap with normalized values of predicted pathology. By default ```Drop_seed : False```. If True then it drops the seed region from the Heatmap and plots to allow a better dynamic range in visualization. 
+Predictions_{seed}_excluded{seed}.png/.pdf.
 
+- In the folder "Model_Robustness" --> Random_Seed/Random_patho/Random_Adja.png/.pdf : Plots of the the fits obtained when we used different controls.
 
 **process_files.py**
 	Processes the data inputs (Quantified pathology matrix, ipsilateral connectivity matrix, 
@@ -82,9 +79,4 @@ each mouse individually.
 **Robustness_Stability.py**
 	Breaks the matrices into pieces to compute different test of stability. Confere the definition of the functions for more
 	information.
-
-**summative_model.py**
-	Iterative model. The main modifications from the original code resides in the prediction function that uses a different
-	equation.
-
 
