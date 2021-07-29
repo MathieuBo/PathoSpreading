@@ -64,10 +64,7 @@ class DataManager(object):
 
         os.makedirs("{}/{}/Tables".format(self.output_path, suffix), exist_ok=True)
         os.makedirs("{}/{}/plots".format(self.output_path, suffix), exist_ok=True)
-        directories = ["Density_vs_residuals", "Heatmap_Predictions", "Fits(c)",
-                       "Model_Robustness"]
-        for directory in directories:
-            os.makedirs("{}/{}/plots/{}".format(self.output_path, suffix, directory), exist_ok=True)
+        os.makedirs("{}/{}/plots/Density_vs_residuals".format(self.output_path, suffix), exist_ok=True)
 
         return suffix
 
@@ -192,6 +189,9 @@ class DataManager(object):
 
         patho = pd.read_csv("{}/{}/Tables/predicted_pathology{}.csv".format(self.output_path, suffix, suffix))
 
+        # Create output folder
+        os.makedirs("{}/{}/plots/Heatmap_Predictions".format(self.output_path, suffix), exist_ok=True)
+
         if not Drop_Seed:
 
             plt.figure(figsize=(10, 25))
@@ -234,6 +234,9 @@ class DataManager(object):
                                                  c_rng=self.c_rng,
                                                  roi_names=self.ROInames)
 
+        # Create output folder
+        os.makedirs("{}/{}/plots/Fits(c)".format(self.output_path, suffix), exist_ok=True)
+
         for t in timepoints:
             plt.figure()
             sns.scatterplot(x=c_r_table[str(t), "c"], y=c_r_table[str(t), "r"])
@@ -247,6 +250,9 @@ class DataManager(object):
 
     def model_robustness(self, exp_data, timepoints, best_c, best_r, suffix, RandomSeed=False,
                          RandomAdja=False, RandomPath=False):
+
+        # Create output folder
+        os.makedirs("{}/{}/plots/Model_Robustness".format(self.output_path, suffix), exist_ok=True)
 
         Robustness_Stability.random_robustness(self, best_c=best_c, best_r=best_r, exp_data=exp_data,
                                                timepoints=timepoints,
