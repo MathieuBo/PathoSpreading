@@ -21,7 +21,7 @@ plt.rc('ytick', labelsize=18)
 
 class DataManager(object):
     # Initialization
-    def __init__(self, exp_data, synuclein, timepoints, seed, output_path, use_expression_values=None, file_format='png'):
+    def __init__(self, exp_data, synuclein, timepoints, seed, output_path, use_expression_values=None, file_format='png', display_plots=False):
 
         self.seed = seed
         self.output_path = output_path
@@ -50,6 +50,10 @@ class DataManager(object):
         self.format = file_format
 
         print('Data Manager initialized\n')
+
+        self.display_plots = display_plots
+        if display_plots:
+            print('Display plots is set True. \nPlots need to be manually closed at various steps for the script to proceed to next steps\n')
 
     # Initialization of the data names & directories:
     def initialization(self):
@@ -152,6 +156,11 @@ class DataManager(object):
             plt.ylabel("Log(Path)", fontsize=16)
             plt.savefig("{}/{}/plots/Predicted_VS_Path_MPI{}{}.{}".format(self.output_path, suffix, time, suffix, self.format), dpi=300)
 
+            if self.display_plots:
+                plt.show()
+            else:
+                plt.close()
+
         # Saving the density Vs Residual plots and example lollipop plots
 
         for time in timepoints:
@@ -167,6 +176,11 @@ class DataManager(object):
             plt.xlabel('Residuals', fontdict={'size': 16})
             plt.savefig("{}/{}/plots/Density_vs_residuals/density_VS_residual{}_MPI{}.{}".format(self.output_path, suffix, suffix, time, self.format), dpi=300)
 
+            if self.display_plots:
+                plt.show()
+            else:
+                plt.close()
+
             # Lollipop
             plt.figure(figsize=(4, 3), constrained_layout=True)
             plt.vlines(mpi["ndm_data"], mpi['linreg_data'], mpi['linreg_data'] + mpi['residual'] - 0.04,
@@ -177,6 +191,12 @@ class DataManager(object):
             plt.xlabel("Log(Predicted)", fontsize=16)
             plt.ylabel("Log(Path)", fontsize=16)
             plt.savefig("{}/{}/plots/Density_vs_residuals/Lollipop_MPI{}{}.{}".format(self.output_path, suffix, time, suffix, self.format), dpi=300)
+
+            if self.display_plots:
+                plt.show()
+            else:
+                plt.close()
+
 
         stats_df = pd.DataFrame(stats_df)
 
@@ -194,16 +214,20 @@ class DataManager(object):
 
         if not Drop_Seed:
 
-            plt.figure(figsize=(10, 25))
+            plt.figure(figsize=(10, 18))
             norm_path = patho[['MPI1', 'MPI3', 'MPI6']].values
             norm_path = (norm_path - np.min(norm_path)) / (np.max(norm_path) - np.min(norm_path))
             plt.imshow(norm_path, cmap='BuPu', aspect=.1)
-            plt.yticks(np.arange(patho.shape[0]), patho['regions'])
+            plt.yticks(np.arange(patho.shape[0]), patho['regions'], fontsize=11)
             plt.xticks(np.arange(patho.columns[1:4].shape[0]), patho.columns[1:4])
             plt.title("Predictions(MPI) - Conditions{}".format(suffix))
             plt.colorbar()
             plt.savefig("{}/{}/plots/Heatmap_Predictions/Predictions_{}.{}".format(self.output_path, suffix, suffix, self.format), dpi=300)
-            plt.show()
+
+            if self.display_plots:
+                plt.show()
+            else:
+                plt.close()
 
         else:
             for i in patho.index:
@@ -211,17 +235,20 @@ class DataManager(object):
                     patho = patho.drop(i)
                     print(self.seed, "was dropped to create the heatmap.")
 
-            plt.figure(figsize=(10, 25))
+            plt.figure(figsize=(10, 18))
             norm_path = patho[['MPI1', 'MPI3', 'MPI6']].values
             norm_path = (norm_path - np.min(norm_path)) / (np.max(norm_path) - np.min(norm_path))
             plt.imshow(norm_path, cmap='BuPu', aspect=.1)
-            plt.yticks(np.arange(patho.shape[0]), patho['regions'])
+            plt.yticks(np.arange(patho.shape[0]), patho['regions'], fontsize=11)
             plt.xticks(np.arange(patho.columns[1:4].shape[0]), patho.columns[1:4])
             plt.title("Predictions(MPI) - Conditions{} - {} excluded".format(suffix, self.seed))
             plt.colorbar()
             plt.savefig("{}/{}/plots/Heatmap_Predictions/Predictions_{}_excluded{}.{}".format(self.output_path, suffix, suffix, self.seed, self.format), dpi=300)
 
-            plt.show()
+            if self.display_plots:
+                plt.show()
+            else:
+                plt.close()
 
         return patho
 
@@ -244,7 +271,11 @@ class DataManager(object):
             plt.ylabel('Best Fit(r)', fontsize=16)
             plt.title('MPI {} - Conditions{}'.format(t, suffix))
             plt.savefig("{}/{}/plots/Fits(c)/plot_r_(c)_MPI{}{}.{}".format(self.output_path, suffix, t, suffix, self.format), dpi=300)
-            plt.show()
+
+            if self.display_plots:
+                plt.show()
+            else:
+                plt.close()
 
     # Controls
 
@@ -282,7 +313,8 @@ if __name__ == '__main__':
                      seed='iCPu',
                      output_path=output_path,
                      use_expression_values=False,
-                     file_format=plot_format)
+                     file_format=plot_format,
+                     display_plots=False)
 
     # Creation of the output directories regarding the initial conditions
     suffix = dm.initialization()

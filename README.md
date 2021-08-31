@@ -57,6 +57,8 @@ Predictions_{seed}_excluded{seed}.png/.pdf.
 
 - In the folder "Model_Robustness" --> Random_Seed/Random_patho/Random_Adja.png/.pdf : Plots of the the fits obtained when we used different controls.
 
+*Note: By default ```display_plots : False``` to avoid that the user needs to manually close all plot before proceeding. All plots are saved to the aforementioned folders.*
+
 **process_files.py**
 	Processes the data inputs (Quantified pathology matrix, ipsilateral connectivity matrix, 
 	and contralateral connectivity matrix). Its main outputs are the adjacency matrix, a 
